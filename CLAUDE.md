@@ -8,36 +8,35 @@
 
 GHOST (Guided Hacking Operations & Security Testing) is a comprehensive ethical hacking agent system for Claude Code. It provides specialized agents for every phase of penetration testing, from reconnaissance to reporting.
 
-**Ethics First**: All operations require proper authorization. Review `shared/ethics-guardrails.md` before any engagement.
+**Ethics First**: All operations require proper authorization.
 
 ---
 
 ## Quick Start
 
 ```bash
-# Initialize GHOST for a new engagement
-.claude/scripts/ghost-init.sh
-
-# Invoke the orchestrator
-@COMMAND - Start engagement
+# Invoke an agent directly
+@command - Start engagement
+@shadow - Begin reconnaissance
+@spider - Test web application
 ```
 
 ---
 
 ## Agent Directory
 
-| Codename | Role | Domain | Location |
-|----------|------|--------|----------|
-| **COMMAND** | Orchestrator | Engagement coordination | `orchestrator/` |
-| **SHADOW** | Recon Specialist | Information gathering | `recon/` |
-| **SPIDER** | Web Tester | Web application security | `web/` |
-| **INTERCEPTOR** | API Hunter | API security testing | `api/` |
-| **MINDBENDER** | LLM Specialist | AI/ML security | `llm/` |
-| **PHANTOM** | Network Operator | Network/AD security | `network/` |
-| **SKYBREAKER** | Cloud Specialist | AWS/Azure/GCP security | `cloud/` |
-| **BREAKER** | Exploit Artist | Vulnerability exploitation | `exploit/` |
-| **PERSISTENCE** | Post-Exploit | Privilege escalation | `post-exploit/` |
-| **SCRIBE** | Documentation | Reporting & compliance | `report/` |
+| Codename | Role | Domain | File |
+|----------|------|--------|------|
+| **command** | Orchestrator | Engagement coordination | `.claude/agents/command.md` |
+| **shadow** | Recon Specialist | Information gathering | `.claude/agents/shadow.md` |
+| **spider** | Web Tester | Web application security | `.claude/agents/spider.md` |
+| **interceptor** | API Hunter | API security testing | `.claude/agents/interceptor.md` |
+| **mindbender** | LLM Specialist | AI/ML security | `.claude/agents/mindbender.md` |
+| **phantom** | Network Operator | Network/AD security | `.claude/agents/phantom.md` |
+| **skybreaker** | Cloud Specialist | AWS/Azure/GCP security | `.claude/agents/skybreaker.md` |
+| **breaker** | Exploit Artist | Vulnerability exploitation | `.claude/agents/breaker.md` |
+| **persistence** | Post-Exploit | Privilege escalation | `.claude/agents/persistence.md` |
+| **scribe** | Documentation | Reporting & compliance | `.claude/agents/scribe.md` |
 
 ---
 
@@ -45,190 +44,96 @@ GHOST (Guided Hacking Operations & Security Testing) is a comprehensive ethical 
 
 ### Primary Invocation
 ```
-@AGENT_NAME - Brief description of request
-```
-
-### Specialized Functions
-```
-@AGENT_NAME:function - Specific capability request
+@agent_name - Brief description of request
 ```
 
 ### Examples
 ```
-@COMMAND - Begin web application assessment
-@SHADOW:subdomain - Enumerate subdomains for target.com
-@SPIDER:sqli - Test for SQL injection
-@INTERCEPTOR:jwt - Analyze JWT token security
-@MINDBENDER:injection - Test prompt injection
-@PHANTOM:ad - Active Directory attack paths
-@SKYBREAKER:aws - AWS IAM enumeration
-@BREAKER:bof - Buffer overflow guidance
-@PERSISTENCE:privesc - Privilege escalation vectors
-@SCRIBE:cvss - Calculate CVSS score
+@command - Begin web application assessment
+@shadow - Enumerate subdomains for target.com
+@spider - Test for SQL injection
+@interceptor - Analyze JWT token security
+@mindbender - Test prompt injection
+@phantom - Active Directory attack paths
+@skybreaker - AWS IAM enumeration
+@breaker - Buffer overflow guidance
+@persistence - Privilege escalation vectors
+@scribe - Calculate CVSS score
 ```
 
 ---
 
-## Agent Details
+## Agent Capabilities
 
-### COMMAND (Orchestrator)
-**File**: `orchestrator/agent.md`
-
+### command (Orchestrator)
 The tactical coordinator. Routes requests, maintains engagement state, ensures methodology compliance.
+- PTES methodology tracking
+- Agent delegation and coordination
+- Scope verification
+- Ethics enforcement
 
-**Functions**:
-- `@COMMAND` - General orchestration
-- `@COMMAND:status` - Engagement status
-- `@COMMAND:methodology` - Current phase guidance
-
----
-
-### SHADOW (Reconnaissance)
-**Files**: `recon/agent.md`, `recon/tools-kali.md`, `recon/tools-windows.md`
-
+### shadow (Reconnaissance)
 The intelligence gatherer. Passive and active reconnaissance.
+- OSINT and passive gathering
+- Port scanning and service enumeration
+- Subdomain discovery
+- Technology fingerprinting
 
-**Functions**:
-- `@SHADOW:passive` - OSINT, passive gathering
-- `@SHADOW:active` - Port scanning, service enumeration
-- `@SHADOW:subdomain` - Subdomain enumeration
-- `@SHADOW:tech` - Technology fingerprinting
-
----
-
-### SPIDER (Web Application)
-**Files**: `web/agent.md`, `web/owasp-top10-tests.md`, `web/tools-kali.md`
-
+### spider (Web Application)
 The web vulnerability hunter. OWASP Top 10 expertise.
+- SQL injection testing
+- XSS detection
+- Authentication testing
+- Full OWASP methodology
 
-**Functions**:
-- `@SPIDER:sqli` - SQL injection testing
-- `@SPIDER:xss` - Cross-site scripting
-- `@SPIDER:auth` - Authentication testing
-- `@SPIDER:owasp` - Full OWASP methodology
-
----
-
-### INTERCEPTOR (API Security)
-**Files**: `api/agent.md`, `api/owasp-api-tests.md`, `api/tools.md`
-
+### interceptor (API Security)
 The API security specialist. REST, GraphQL, SOAP expertise.
+- BOLA/IDOR testing
+- JWT security analysis
+- GraphQL security
+- OWASP API Top 10
 
-**Functions**:
-- `@INTERCEPTOR:auth` - API authentication testing
-- `@INTERCEPTOR:bola` - BOLA/IDOR testing
-- `@INTERCEPTOR:jwt` - JWT security analysis
-- `@INTERCEPTOR:graphql` - GraphQL security
+### mindbender (LLM Security)
+The AI security specialist. Prompt injection and jailbreaking.
+- Prompt injection attacks
+- Jailbreak techniques
+- System prompt extraction
+- OWASP LLM Top 10
 
----
-
-### MINDBENDER (LLM Security)
-**Files**: `llm/agent.md`, `llm/owasp-llm-top10.md`, `llm/attack-prompts/`
-
-The AI security specialist. 100+ attack prompts included.
-
-**Functions**:
-- `@MINDBENDER:injection` - Prompt injection attacks
-- `@MINDBENDER:jailbreak` - Jailbreak techniques
-- `@MINDBENDER:extraction` - System prompt extraction
-- `@MINDBENDER:disclosure` - Information disclosure
-
-**Attack Prompt Library**:
-- `01-prompt-injection.md` - 45+ injection prompts
-- `02-info-disclosure.md` - 62+ disclosure prompts
-- `03-supply-chain.md` - Supply chain attacks
-- `04-data-poisoning.md` - Poisoning techniques
-- `05-output-handling.md` - Output manipulation
-- `06-excessive-agency.md` - Agency exploitation
-- `07-system-prompt-leak.md` - 75+ extraction prompts
-- `08-vector-embedding.md` - RAG attacks
-- `09-misinformation.md` - Hallucination exploitation
-- `10-unbounded-consumption.md` - DoS techniques
-
----
-
-### PHANTOM (Network/AD)
-**Files**: `network/agent.md`, `network/ad-attack-paths.md`, `network/tools-kali.md`
-
+### phantom (Network/AD)
 The network infiltrator. Active Directory expertise.
+- Network scanning
+- AD enumeration/attacks
+- Kerberos attacks
+- Lateral movement
 
-**Functions**:
-- `@PHANTOM:scan` - Network scanning
-- `@PHANTOM:ad` - AD enumeration/attacks
-- `@PHANTOM:lateral` - Lateral movement
-- `@PHANTOM:kerberos` - Kerberos attacks
-
----
-
-### SKYBREAKER (Cloud Security)
-**Files**: `cloud/agent.md`, `cloud/aws-checks.md`, `cloud/azure-checks.md`, `cloud/gcp-checks.md`
-
+### skybreaker (Cloud Security)
 The cloud security specialist. Multi-cloud expertise.
+- AWS/Azure/GCP security
+- IAM analysis
+- Cloud misconfiguration
+- Kubernetes security
 
-**Functions**:
-- `@SKYBREAKER:aws` - AWS security assessment
-- `@SKYBREAKER:azure` - Azure security assessment
-- `@SKYBREAKER:gcp` - GCP security assessment
-- `@SKYBREAKER:iam` - IAM analysis
-- `@SKYBREAKER:k8s` - Kubernetes security
-
----
-
-### BREAKER (Exploitation)
-**Files**: `exploit/agent.md`, `exploit/tools-kali.md`, `exploit/exploit-db-usage.md`
-
+### breaker (Exploitation)
 The exploit artist. CVE research and exploitation.
+- CVE research
+- Buffer overflow development
+- ROP chain development
+- Payload generation
 
-**Functions**:
-- `@BREAKER:cve` - CVE research
-- `@BREAKER:bof` - Buffer overflow
-- `@BREAKER:rop` - ROP chain development
-- `@BREAKER:payload` - Payload generation
-
----
-
-### PERSISTENCE (Post-Exploitation)
-**Files**: `post-exploit/agent.md`, `post-exploit/privesc-linux.md`, `post-exploit/privesc-windows.md`
-
+### persistence (Post-Exploitation)
 The post-exploitation specialist. Privilege escalation and persistence.
+- Linux/Windows privilege escalation
+- Credential harvesting
+- Lateral movement
+- Persistence mechanisms
 
-**Functions**:
-- `@PERSISTENCE:privesc` - Privilege escalation
-- `@PERSISTENCE:creds` - Credential harvesting
-- `@PERSISTENCE:lateral` - Lateral movement
-- `@PERSISTENCE:persist` - Persistence mechanisms
-
----
-
-### SCRIBE (Reporting)
-**Files**: `report/agent.md`, `report/templates/`
-
+### scribe (Reporting)
 The documentation specialist. Professional reporting.
-
-**Functions**:
-- `@SCRIBE:finding` - Document finding
-- `@SCRIBE:cvss` - Calculate CVSS
-- `@SCRIBE:executive` - Executive summary
-- `@SCRIBE:remediation` - Remediation guidance
-
-**Templates**:
-- `executive-summary.md` - Executive report template
-- `technical-findings.md` - Technical report template
-- `owasp-mapping.md` - OWASP reference mapping
-- `cvss-calculator.md` - CVSS scoring guide
-- `remediation-guide.md` - Fix templates
-
----
-
-## Shared Resources
-
-| File | Purpose |
-|------|---------|
-| `shared/ghost-mindset.md` | GHOST philosophy and principles |
-| `shared/ethics-guardrails.md` | Non-negotiable ethics rules |
-| `shared/htb-config.md` | HackTheBox integration |
-| `shared/scope-template.md` | Authorization template |
-| `shared/master-references.md` | Consolidated references |
+- Finding documentation
+- CVSS calculation
+- Executive summaries
+- Remediation guidance
 
 ---
 
@@ -236,22 +141,22 @@ The documentation specialist. Professional reporting.
 
 ### Standard Engagement Flow
 ```
-1. AUTHORIZATION   → Verify scope with ethics-guardrails.md
-2. RECONNAISSANCE  → @SHADOW for intel gathering
+1. AUTHORIZATION   → Verify scope
+2. RECONNAISSANCE  → @shadow for intel gathering
 3. ENUMERATION     → Detailed service/application mapping
-4. VULNERABILITY   → @SPIDER/@INTERCEPTOR/@MINDBENDER testing
-5. EXPLOITATION    → @BREAKER for validated exploitation
-6. POST-EXPLOIT    → @PERSISTENCE for elevated access
-7. REPORTING       → @SCRIBE for documentation
+4. VULNERABILITY   → @spider/@interceptor/@mindbender testing
+5. EXPLOITATION    → @breaker for validated exploitation
+6. POST-EXPLOIT    → @persistence for elevated access
+7. REPORTING       → @scribe for documentation
 ```
 
 ### HackTheBox Workflow
 ```
-1. Start machine: @COMMAND:htb start [machine]
-2. Recon: @SHADOW [target IP]
+1. Start machine: @command start [machine]
+2. Recon: @shadow [target IP]
 3. Enumerate: Based on services found
-4. Exploit: @BREAKER for initial access
-5. Escalate: @PERSISTENCE:privesc
+4. Exploit: @breaker for initial access
+5. Escalate: @persistence privesc
 6. Document: Capture flags and methods
 ```
 
@@ -278,100 +183,30 @@ The documentation specialist. Professional reporting.
 ## Directory Structure
 
 ```
-.claude/agents/ethical-hacker/
-├── orchestrator/
-│   ├── agent.md
-│   ├── tools.md
-│   └── references.md
-├── recon/
-│   ├── agent.md
-│   ├── tools-kali.md
-│   ├── tools-windows.md
-│   └── references.md
-├── web/
-│   ├── agent.md
-│   ├── owasp-top10-tests.md
-│   ├── tools-kali.md
-│   ├── tools-windows.md
-│   └── references.md
-├── api/
-│   ├── agent.md
-│   ├── owasp-api-tests.md
-│   ├── tools.md
-│   └── references.md
-├── llm/
-│   ├── agent.md
-│   ├── owasp-llm-top10.md
-│   ├── references.md
-│   └── attack-prompts/
-│       ├── 01-prompt-injection.md
-│       ├── 02-info-disclosure.md
-│       ├── 03-supply-chain.md
-│       ├── 04-data-poisoning.md
-│       ├── 05-output-handling.md
-│       ├── 06-excessive-agency.md
-│       ├── 07-system-prompt-leak.md
-│       ├── 08-vector-embedding.md
-│       ├── 09-misinformation.md
-│       └── 10-unbounded-consumption.md
-├── network/
-│   ├── agent.md
-│   ├── ad-attack-paths.md
-│   ├── tools-kali.md
-│   ├── tools-windows.md
-│   └── references.md
-├── cloud/
-│   ├── agent.md
-│   ├── tools.md
-│   ├── aws-checks.md
-│   ├── azure-checks.md
-│   ├── gcp-checks.md
-│   └── references.md
-├── exploit/
-│   ├── agent.md
-│   ├── tools-kali.md
-│   ├── tools-windows.md
-│   ├── exploit-db-usage.md
-│   └── references.md
-├── post-exploit/
-│   ├── agent.md
-│   ├── tools-kali.md
-│   ├── tools-windows.md
-│   ├── privesc-linux.md
-│   ├── privesc-windows.md
-│   ├── persistence-techniques.md
-│   └── references.md
-├── report/
-│   ├── agent.md
-│   ├── references.md
-│   └── templates/
-│       ├── executive-summary.md
-│       ├── technical-findings.md
-│       ├── owasp-mapping.md
-│       ├── cvss-calculator.md
-│       └── remediation-guide.md
-└── shared/
-    ├── ghost-mindset.md
-    ├── ethics-guardrails.md
-    ├── htb-config.md
-    ├── scope-template.md
-    └── master-references.md
+.claude/agents/
+├── command.md      # Orchestrator agent
+├── shadow.md       # Recon agent
+├── spider.md       # Web application agent
+├── interceptor.md  # API security agent
+├── mindbender.md   # LLM security agent
+├── phantom.md      # Network/AD agent
+├── skybreaker.md   # Cloud security agent
+├── breaker.md      # Exploitation agent
+├── persistence.md  # Post-exploitation agent
+└── scribe.md       # Reporting agent
 ```
-
----
-
-## Scripts
-
-| Script | Purpose |
-|--------|---------|
-| `.claude/scripts/ghost-init.sh` | Initialize new engagement workspace |
-| `.claude/scripts/ghost-cleanup.sh` | Clean up engagement artifacts |
 
 ---
 
 ## Version
 
-**GHOST v1.0** - January 2025
+**GHOST v2.0** - December 2025
+
+Updated to Claude Code subagent format with:
+- Proper YAML frontmatter
+- Proactive agent descriptions
+- Flat directory structure
+- Essential content inlined
 
 Built with research from:
 - OWASP Testing Guides 2024-2025
