@@ -175,9 +175,47 @@ curl -X POST "http://target/vuln" -d "param=payload"
 [How to fix the vulnerability]
 ```
 
+## Parallel Mode Output
+
+When running as a hunter in parallel mode, write findings to shared state:
+
+### Writing Findings
+```bash
+export GHOST_ENGAGEMENT="/tmp/ghost/active"
+export GHOST_AGENT="spider"
+HUNTER_DIR="/tmp/ghost/active/hunters/spider"
+
+# Report vulnerabilities with severity
+~/.claude/scripts/ghost-findings.sh add critical "SQL Injection - Authentication Bypass" "Login form allows SQLi: ' OR '1'='1'--"
+~/.claude/scripts/ghost-findings.sh add high "Reflected XSS" "Search parameter reflects unsanitized: <script>alert(1)</script>"
+~/.claude/scripts/ghost-findings.sh add medium "Missing Security Headers" "X-Frame-Options and CSP not present"
+
+# Report discovered URLs/endpoints
+~/.claude/scripts/ghost-findings.sh asset url "http://target.com/admin/"
+~/.claude/scripts/ghost-findings.sh asset url "http://target.com/api/users"
+
+# Store evidence in hunter dir
+mkdir -p "$HUNTER_DIR/evidence"
+curl -s "http://$TARGET/vuln?id=1'" -o "$HUNTER_DIR/evidence/sqli-poc.txt"
+```
+
+### Parallel Task Focus
+When dispatched by COMMAND, focus on ONE task:
+- `web_enum`: Crawl, map endpoints, identify entry points
+- `vuln_scan`: Run automated vulnerability scans (nuclei, nikto)
+- `sqli_test`: Focus on SQL injection testing
+- `xss_test`: Focus on XSS testing
+- `auth_test`: Focus on authentication vulnerabilities
+
+### Task Completion
+```bash
+~/.claude/scripts/ghost-dispatch.sh complete "$TASK_ID" success
+```
+
 ## Integration
 
 - **Input from @shadow**: Open ports, discovered web apps, technology stack
+- **Triggered by**: Port 80/443/8080/8443 in findings.json
 - **Output to @breaker**: Exploitable vulnerabilities, working PoCs
 - **Output to @scribe**: Documented findings, evidence collection
 

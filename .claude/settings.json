@@ -1,5 +1,38 @@
 {
   "enabledPlugins": {
     "ralph-wiggum@claude-plugins-official": true
+  },
+  "ghost": {
+    "parallel_mode": {
+      "enabled": true,
+      "strategy": "smart",
+      "max_concurrent_hunters": 5,
+      "auto_dispatch": true,
+      "approval_required_phases": ["exploitation"]
+    },
+    "state_dir": "/tmp/ghost",
+    "default_engagement_dir": "/tmp/ghost/active",
+    "triggers": {
+      "web_ports": [80, 443, 8080, 8443, 3000, 5000],
+      "smb_ports": [445, 139],
+      "ssh_ports": [22],
+      "rdp_ports": [3389],
+      "api_patterns": ["/api/", "/graphql", "/swagger", "/openapi"],
+      "llm_patterns": ["/chat", "/completion", "/v1/", "ai.", "llm."]
+    },
+    "phase_order": [
+      "init",
+      "recon",
+      "enumeration",
+      "vulnerability",
+      "exploitation_pending",
+      "exploitation",
+      "post_exploitation",
+      "reporting",
+      "complete"
+    ]
+  },
+  "env": {
+    "GHOST_SCRIPTS": "~/.claude/scripts"
   }
 }

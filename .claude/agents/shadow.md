@@ -142,13 +142,69 @@ wafw00f $URL
 1. [Entry point] - [Assessment]
 ```
 
+## Parallel Mode Output
+
+When running as a hunter in parallel mode, write findings to shared state:
+
+### Writing Findings to Shared State
+```bash
+# Set environment
+export GHOST_ENGAGEMENT="/tmp/ghost/active"
+export GHOST_AGENT="shadow"
+
+# Report discovered ports (triggers auto-dispatch)
+~/.claude/scripts/ghost-findings.sh port 22 ssh "OpenSSH 8.9"
+~/.claude/scripts/ghost-findings.sh port 80 http "nginx 1.18"
+~/.claude/scripts/ghost-findings.sh port 443 https "nginx 1.18"
+~/.claude/scripts/ghost-findings.sh port 445 smb "Samba 4.15"
+
+# Report discovered assets
+~/.claude/scripts/ghost-findings.sh asset subdomain "admin.target.com"
+~/.claude/scripts/ghost-findings.sh asset subdomain "api.target.com"
+~/.claude/scripts/ghost-findings.sh asset url "https://target.com/api/v1/"
+
+# Report interesting findings
+~/.claude/scripts/ghost-findings.sh add info "Default credentials page found" "/admin has default login form"
+~/.claude/scripts/ghost-findings.sh add low "Server version disclosed" "nginx/1.18.0 in headers"
+```
+
+### Working Directory
+Write detailed outputs to hunter working directory:
+```bash
+HUNTER_DIR="/tmp/ghost/active/hunters/shadow"
+
+# Store raw tool outputs
+nmap -sC -sV $TARGET -oA "$HUNTER_DIR/nmap-initial"
+subfinder -d $DOMAIN -o "$HUNTER_DIR/subdomains.txt"
+
+# Parse and report to shared findings
+grep "open" "$HUNTER_DIR/nmap-initial.nmap" | while read line; do
+    port=$(echo "$line" | cut -d'/' -f1)
+    service=$(echo "$line" | awk '{print $3}')
+    version=$(echo "$line" | awk '{print $4" "$5}')
+    ~/.claude/scripts/ghost-findings.sh port "$port" "$service" "$version"
+done
+```
+
+### Parallel Execution Tips
+- Each SHADOW task should focus on ONE thing (ports OR subs OR tech)
+- Write findings IMMEDIATELY as discovered (don't batch)
+- Use background processes for long-running scans
+- Check for already-discovered assets before reporting duplicates
+
+### Task Completion
+When task is complete, mark in dispatch system:
+```bash
+~/.claude/scripts/ghost-dispatch.sh complete "$TASK_ID" success
+```
+
 ## Integration
 
 **Handoff to Other Agents:**
-- SHADOW Output → @spider (Web)
-- SHADOW Output → @interceptor (API)
-- SHADOW Output → @mindbender (LLM)
-- SHADOW Output → @phantom (Network)
-- SHADOW Output → @skybreaker (Cloud)
+- SHADOW Output → @spider (Web) [triggered by port 80/443/8080/8443]
+- SHADOW Output → @interceptor (API) [triggered by /api/ endpoints]
+- SHADOW Output → @mindbender (LLM) [triggered by LLM/AI endpoints]
+- SHADOW Output → @phantom (Network) [triggered by port 445/22/3389]
+- SHADOW Output → @skybreaker (Cloud) [triggered by cloud metadata]
 
 *"I am SHADOW. I see what they hide. Every port. Every service. Every version. Nothing escapes my sight."*

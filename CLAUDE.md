@@ -15,10 +15,15 @@ GHOST (Guided Hacking Operations & Security Testing) is a comprehensive ethical 
 ## Quick Start
 
 ```bash
-# Invoke an agent directly
+# Standard mode - invoke agents directly
 @command - Start engagement
 @shadow - Begin reconnaissance
 @spider - Test web application
+
+# Parallel mode - hunter/gather with auto-dispatch
+~/.claude/scripts/ghost-parallel-init.sh myengagement 10.10.10.100
+export GHOST_ENGAGEMENT="/tmp/ghost/active"
+@command - Begin parallel engagement
 ```
 
 ---
@@ -162,6 +167,82 @@ The documentation specialist. Professional reporting.
 
 ---
 
+## Parallel Mode (Hunter-Gather)
+
+GHOST supports parallel agent execution with automatic trigger-based dispatch.
+
+### Architecture
+```
+/tmp/ghost/
+├── engagements/{name}/
+│   ├── state.json          # Current phase, active hunters
+│   ├── plan.json           # Attack dependency graph
+│   ├── findings.json       # Consolidated findings
+│   ├── runlog.jsonl        # Audit trail
+│   ├── tasks/
+│   │   ├── pending/        # Queued tasks
+│   │   ├── running/        # Active tasks
+│   │   └── completed/      # Finished tasks
+│   └── hunters/{agent}/    # Per-agent working dirs
+└── active -> {current}     # Symlink to active engagement
+```
+
+### Scripts
+| Script | Purpose |
+|--------|---------|
+| `ghost-parallel-init.sh` | Initialize engagement with parallel support |
+| `ghost-dispatch.sh` | Queue and manage tasks |
+| `ghost-findings.sh` | Add findings, assets, credentials |
+| `ghost-watchdog.sh` | Auto-dispatch based on triggers |
+
+### Usage
+
+```bash
+# 1. Initialize parallel engagement
+~/.claude/scripts/ghost-parallel-init.sh htb-box 10.10.10.100
+
+# 2. Set environment
+export GHOST_ENGAGEMENT="/tmp/ghost/active"
+export TARGET="10.10.10.100"
+
+# 3. Start with COMMAND (auto-dispatches recon)
+@command - Begin parallel engagement on $TARGET
+
+# 4. Monitor progress
+~/.claude/scripts/ghost-dispatch.sh status
+
+# 5. View findings
+~/.claude/scripts/ghost-findings.sh export summary
+
+# 6. Start auto-dispatch watchdog (optional)
+~/.claude/scripts/ghost-watchdog.sh start
+```
+
+### Smart Dispatch Logic
+- **Parallel within phases**: All recon runs simultaneously
+- **Sequential between phases**: Recon completes before enumeration
+- **Trigger-based**: Findings auto-dispatch appropriate agents
+  - Port 80/443 → @spider
+  - Port 445 → @phantom
+  - /api/ endpoint → @interceptor
+  - LLM detected → @mindbender
+- **Approval gates**: Exploitation requires explicit approval
+
+### Manual Task Management
+```bash
+# Queue a task manually
+~/.claude/scripts/ghost-dispatch.sh queue shadow port_scan 1
+
+# Check what's running
+~/.claude/scripts/ghost-dispatch.sh status
+
+# Add findings manually
+~/.claude/scripts/ghost-findings.sh add high "SQLi Found" "Login page vulnerable"
+~/.claude/scripts/ghost-findings.sh port 22 ssh "OpenSSH 8.9"
+```
+
+---
+
 ## Ethics & Authorization
 
 ### Before ANY Engagement
@@ -183,30 +264,40 @@ The documentation specialist. Professional reporting.
 ## Directory Structure
 
 ```
-.claude/agents/
-├── command.md      # Orchestrator agent
-├── shadow.md       # Recon agent
-├── spider.md       # Web application agent
-├── interceptor.md  # API security agent
-├── mindbender.md   # LLM security agent
-├── phantom.md      # Network/AD agent
-├── skybreaker.md   # Cloud security agent
-├── breaker.md      # Exploitation agent
-├── persistence.md  # Post-exploitation agent
-└── scribe.md       # Reporting agent
+.claude/
+├── agents/
+│   ├── command.md      # Orchestrator agent
+│   ├── shadow.md       # Recon agent
+│   ├── spider.md       # Web application agent
+│   ├── interceptor.md  # API security agent
+│   ├── mindbender.md   # LLM security agent
+│   ├── phantom.md      # Network/AD agent
+│   ├── skybreaker.md   # Cloud security agent
+│   ├── breaker.md      # Exploitation agent
+│   ├── persistence.md  # Post-exploitation agent
+│   └── scribe.md       # Reporting agent
+├── scripts/
+│   ├── ghost-init.sh           # Standard engagement init
+│   ├── ghost-parallel-init.sh  # Parallel mode init
+│   ├── ghost-dispatch.sh       # Task queue management
+│   ├── ghost-findings.sh       # Findings management
+│   ├── ghost-watchdog.sh       # Auto-dispatch monitor
+│   └── ghost-cleanup.sh        # Engagement cleanup
+└── settings.json               # GHOST configuration
 ```
 
 ---
 
 ## Version
 
-**GHOST v2.0** - December 2025
+**GHOST v2.1** - December 2025
 
-Updated to Claude Code subagent format with:
-- Proper YAML frontmatter
-- Proactive agent descriptions
-- Flat directory structure
-- Essential content inlined
+Updated with parallel mode (Hunter-Gather):
+- Concurrent agent execution
+- Auto-dispatch based on triggers
+- Shared state via JSON files
+- Runlog audit trail
+- Smart phase sequencing
 
 Built with research from:
 - OWASP Testing Guides 2024-2025
