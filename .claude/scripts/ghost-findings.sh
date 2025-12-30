@@ -33,13 +33,46 @@ update_timestamp() {
     mv "$tmp" "$FINDINGS_FILE"
 }
 
-# Add a finding
+# Add a finding (enhanced with ATT&CK, CVSS 4.0, CWE/CVE)
+# Usage: add_finding <severity> <title> [description] [mitre_tid] [cwe_id] [cvss_score] [cve_id]
 add_finding() {
     local severity="$1"
     local title="$2"
     local description="${3:-}"
+    local mitre_tid="${4:-}"      # e.g., T1190
+    local cwe_id="${5:-}"          # e.g., CWE-89
+    local cvss_score="${6:-}"      # e.g., 9.8
+    local cve_id="${7:-}"          # e.g., CVE-2024-1234
     local agent="${GHOST_AGENT:-unknown}"
+    local phase="${GHOST_PHASE:-unknown}"
     local finding_id="finding_$(date +%s%N | cut -c1-13)"
+
+    # Build attack object if MITRE T-code provided
+    local attack_json="null"
+    if [ -n "$mitre_tid" ]; then
+        attack_json="{\"mitre_technique\":\"$mitre_tid\",\"mitre_url\":\"https://attack.mitre.org/techniques/$mitre_tid\"}"
+    fi
+
+    # Build classification object
+    local class_json="{}"
+    if [ -n "$cwe_id" ] || [ -n "$cve_id" ]; then
+        class_json=$(jq -n \
+            --arg cwe "$cwe_id" \
+            --arg cve "$cve_id" \
+            '{cwe_id: (if $cwe != "" then $cwe else null end), cve_id: (if $cve != "" then $cve else null end)}')
+    fi
+
+    # Build CVSS object if score provided
+    local cvss_json="null"
+    if [ -n "$cvss_score" ]; then
+        local cvss_severity="None"
+        if (( $(echo "$cvss_score >= 9.0" | bc -l) )); then cvss_severity="Critical"
+        elif (( $(echo "$cvss_score >= 7.0" | bc -l) )); then cvss_severity="High"
+        elif (( $(echo "$cvss_score >= 4.0" | bc -l) )); then cvss_severity="Medium"
+        elif (( $(echo "$cvss_score >= 0.1" | bc -l) )); then cvss_severity="Low"
+        fi
+        cvss_json="{\"version\":\"4.0\",\"score\":$cvss_score,\"severity\":\"$cvss_severity\"}"
+    fi
 
     local tmp=$(mktemp)
     jq --arg id "$finding_id" \
@@ -47,16 +80,24 @@ add_finding() {
        --arg title "$title" \
        --arg desc "$description" \
        --arg agent "$agent" \
+       --arg phase "$phase" \
        --arg ts "$(date -Iseconds)" \
+       --argjson attack "$attack_json" \
+       --argjson class "$class_json" \
+       --argjson cvss "$cvss_json" \
        '.findings += [{
          "id": $id,
          "severity": $sev,
          "title": $title,
          "description": $desc,
          "agent": $agent,
+         "phase": $phase,
          "discovered_at": $ts,
          "status": "new",
-         "evidence": []
+         "evidence": [],
+         "attack": $attack,
+         "classification": $class,
+         "cvss": $cvss
        }]' "$FINDINGS_FILE" > "$tmp"
     mv "$tmp" "$FINDINGS_FILE"
 
@@ -65,36 +106,57 @@ add_finding() {
     jq --arg sev "$severity" '.findings_count[$sev] += 1' "$STATE_FILE" > "$tmp"
     mv "$tmp" "$STATE_FILE"
 
+    # Update phase metrics
+    tmp=$(mktemp)
+    jq '.phase_metrics.vulnerability.vulns_found += 1' "$STATE_FILE" > "$tmp" 2>/dev/null && mv "$tmp" "$STATE_FILE" || true
+
     update_timestamp
-    log_event "finding_added" "\"id\":\"$finding_id\",\"severity\":\"$severity\",\"title\":\"$title\""
+    log_event "finding_added" "\"id\":\"$finding_id\",\"severity\":\"$severity\",\"title\":\"$title\",\"mitre\":\"$mitre_tid\",\"cwe\":\"$cwe_id\",\"cvss\":\"$cvss_score\""
 
     echo "$finding_id"
 }
 
 # Add an asset (discovered host, subdomain, etc.)
+# Usage: add_asset <type> <value> [info] [tags]
 add_asset() {
-    local type="$1"      # host, subdomain, url, email, etc.
+    local type="$1"      # host, subdomain, url, endpoint, service, email, user
     local value="$2"
     local info="${3:-}"
+    local tags="${4:-}"   # comma-separated: web,api,smb,ssh,ad,cloud,llm
     local agent="${GHOST_AGENT:-unknown}"
+    local phase="${GHOST_PHASE:-unknown}"
+
+    # Convert tags to JSON array
+    local tags_json="[]"
+    if [ -n "$tags" ]; then
+        tags_json=$(echo "$tags" | tr ',' '\n' | jq -R . | jq -s .)
+    fi
 
     local tmp=$(mktemp)
     jq --arg type "$type" \
        --arg value "$value" \
        --arg info "$info" \
        --arg agent "$agent" \
+       --arg phase "$phase" \
        --arg ts "$(date -Iseconds)" \
+       --argjson tags "$tags_json" \
        '.assets += [{
          "type": $type,
          "value": $value,
          "info": $info,
          "discovered_by": $agent,
-         "discovered_at": $ts
+         "phase": $phase,
+         "discovered_at": $ts,
+         "tags": $tags
        }]' "$FINDINGS_FILE" > "$tmp"
     mv "$tmp" "$FINDINGS_FILE"
 
+    # Update phase metrics for assets
+    tmp=$(mktemp)
+    jq '.phase_metrics.recon.assets_discovered += 1' "$STATE_FILE" > "$tmp" 2>/dev/null && mv "$tmp" "$STATE_FILE" || true
+
     update_timestamp
-    log_event "asset_discovered" "\"type\":\"$type\",\"value\":\"$value\""
+    log_event "asset_discovered" "\"type\":\"$type\",\"value\":\"$value\",\"phase\":\"$phase\""
 }
 
 # Add credential
@@ -131,11 +193,30 @@ add_port() {
     local version="${3:-}"
     local host="${4:-${TARGET:-unknown}}"
 
-    # Add as asset with port info
-    add_asset "port" "$host:$port" "$service $version"
+    # Determine tags based on port
+    local tags=""
+    case "$port" in
+        80|443|8080|8443) tags="web" ;;
+        445|139) tags="smb" ;;
+        22) tags="ssh" ;;
+        3389) tags="rdp" ;;
+        389|636|3268|3269) tags="ad,ldap" ;;
+        88) tags="ad,kerberos" ;;
+        53) tags="dns" ;;
+        21) tags="ftp" ;;
+        25|587|465) tags="smtp" ;;
+        *) tags="" ;;
+    esac
+
+    # Add as asset with port info and tags
+    add_asset "port" "$host:$port" "$service $version" "$tags"
+
+    # Update phase metrics for ports
+    local tmp=$(mktemp)
+    jq '.phase_metrics.recon.ports_found += 1' "$STATE_FILE" > "$tmp" 2>/dev/null && mv "$tmp" "$STATE_FILE" || true
 
     # Also log specific event
-    log_event "port_discovered" "\"host\":\"$host\",\"port\":\"$port\",\"service\":\"$service\""
+    log_event "port_discovered" "\"host\":\"$host\",\"port\":\"$port\",\"service\":\"$service\",\"tags\":\"$tags\""
 }
 
 # List findings
@@ -256,20 +337,31 @@ case "${1:-help}" in
         get_assets "${2:-host}"
         ;;
     *)
-        echo "GHOST Findings Manager"
+        echo "GHOST Findings Manager v2.0 (PTES Enhanced)"
         echo ""
         echo "Usage: $0 <command> [args]"
         echo ""
         echo "Commands:"
-        echo "  add <severity> <title> [desc]  - Add a finding"
-        echo "  asset <type> <value> [info]    - Add discovered asset"
+        echo "  add <sev> <title> [desc] [T-code] [CWE] [CVSS] [CVE]"
+        echo "                                 - Add finding with ATT&CK/CVSS/CWE"
+        echo "  asset <type> <value> [info] [tags]"
+        echo "                                 - Add asset with tags (web,api,smb,ssh,ad,cloud)"
         echo "  cred <user> <secret> <source>  - Add credential"
-        echo "  port <port> <service> [ver]    - Add discovered port"
+        echo "  port <port> <service> [ver]    - Add port (auto-tagged)"
         echo "  list [severity]                - List findings"
         echo "  count                          - Count by severity"
         echo "  export [json|csv|summary]      - Export findings"
         echo "  triggers                       - Check for dispatch triggers"
         echo "  ports                          - List discovered ports"
         echo "  assets <type>                  - List assets by type"
+        echo ""
+        echo "Examples:"
+        echo "  $0 add critical 'SQL Injection' 'Login form' T1190 CWE-89 9.8 CVE-2024-1234"
+        echo "  $0 asset endpoint '/api/users' 'REST API' api,auth"
+        echo "  $0 port 443 https 'nginx 1.24'"
+        echo ""
+        echo "Environment:"
+        echo "  GHOST_AGENT   - Agent name (auto-attributed)"
+        echo "  GHOST_PHASE   - Current phase (auto-tracked)"
         ;;
 esac

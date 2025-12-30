@@ -1,13 +1,15 @@
 #!/bin/bash
 #
-# GHOST Watchdog - Auto-Dispatch Monitor
-# Watches findings and dispatches agents based on triggers
+# GHOST Watchdog v2.0 - Auto-Dispatch with PTES Phase Sequencing
+# Watches findings, enforces completion criteria, handles auto-regression
 #
 # Usage:
 #   ghost-watchdog.sh start       - Start monitoring (background)
 #   ghost-watchdog.sh stop        - Stop monitoring
 #   ghost-watchdog.sh check       - One-time trigger check
 #   ghost-watchdog.sh dispatch    - Force dispatch based on current findings
+#   ghost-watchdog.sh phase       - Show current phase and metrics
+#   ghost-watchdog.sh regress <phase> - Force regression to phase
 #
 
 set -e
@@ -22,19 +24,27 @@ FINDINGS="$SCRIPTS_DIR/ghost-findings.sh"
 
 STATE_FILE="$ENGAGEMENT/state.json"
 PLAN_FILE="$ENGAGEMENT/plan.json"
+FINDINGS_FILE="$ENGAGEMENT/findings.json"
 RUNLOG="$ENGAGEMENT/runlog.jsonl"
 PID_FILE="$ENGAGEMENT/.watchdog.pid"
 DISPATCHED_FILE="$ENGAGEMENT/.dispatched"
+REGRESSION_FILE="$ENGAGEMENT/.last_regression"
 
 # Colors
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
+RED='\033[0;31m'
 NC='\033[0m'
 
 log_event() {
     echo "{\"timestamp\":\"$(date -Iseconds)\",\"event\":\"watchdog_$1\",$2}" >> "$RUNLOG"
 }
+
+# Track previous asset/finding counts for regression detection
+PREV_PORT_COUNT=0
+PREV_ASSET_COUNT=0
+PREV_FINDING_COUNT=0
 
 # Check if already dispatched
 already_dispatched() {
@@ -53,13 +63,159 @@ get_phase() {
     jq -r '.phase' "$STATE_FILE"
 }
 
-# Set phase
+# Set phase with history tracking
 set_phase() {
-    local phase="$1"
+    local new_phase="$1"
+    local reason="${2:-auto_progress}"
+    local current_phase=$(get_phase)
     local tmp=$(mktemp)
-    jq --arg phase "$phase" '.phase = $phase' "$STATE_FILE" > "$tmp"
+
+    # Update phase and add to history
+    jq --arg new_phase "$new_phase" \
+       --arg old_phase "$current_phase" \
+       --arg reason "$reason" \
+       --arg ts "$(date -Iseconds)" \
+       '
+       # Close previous phase in history
+       .phase_history = (.phase_history | map(
+         if .phase == $old_phase and .exited_at == null
+         then . + {"exited_at": $ts, "exit_reason": $reason}
+         else .
+         end
+       )) |
+       # Add new phase to history
+       .phase_history += [{"phase": $new_phase, "entered_at": $ts, "exited_at": null, "exit_reason": null}] |
+       # Update current phase
+       .phase = $new_phase |
+       # Add to completed if not already there and not current
+       (if (.phases_completed | index($old_phase)) == null and $old_phase != "init"
+        then .phases_completed += [$old_phase]
+        else . end)
+       ' "$STATE_FILE" > "$tmp"
     mv "$tmp" "$STATE_FILE"
-    log_event "phase_change" "\"phase\":\"$phase\""
+
+    echo -e "${GREEN}[Phase]${NC} $current_phase → $new_phase ($reason)"
+    log_event "phase_change" "\"from\":\"$current_phase\",\"to\":\"$new_phase\",\"reason\":\"$reason\""
+}
+
+# Check phase completion criteria
+check_completion_criteria() {
+    local phase="$1"
+    local running=$("$DISPATCH" running 2>/dev/null || echo 0)
+    local pending=$("$DISPATCH" pending 2>/dev/null || echo 0)
+
+    # Get metrics from state
+    local ports_found=$(jq -r '.phase_metrics.recon.ports_found // 0' "$STATE_FILE" 2>/dev/null || echo 0)
+    local assets_found=$(jq -r '.phase_metrics.recon.assets_discovered // 0' "$STATE_FILE" 2>/dev/null || echo 0)
+    local vulns_found=$(jq -r '.phase_metrics.vulnerability.vulns_found // 0' "$STATE_FILE" 2>/dev/null || echo 0)
+    local findings_count=$(jq '.findings | length' "$FINDINGS_FILE" 2>/dev/null || echo 0)
+
+    case "$phase" in
+        recon)
+            # Recon complete when: no tasks running AND at least 1 port found
+            if [ "$running" -eq 0 ] && [ "$pending" -eq 0 ] && [ "$ports_found" -ge 1 ]; then
+                return 0
+            fi
+            ;;
+        enumeration)
+            # Enumeration complete when: no tasks running AND services enumerated
+            local services_enum=$(jq -r '.phase_metrics.enumeration.services_enumerated // 0' "$STATE_FILE" 2>/dev/null || echo 0)
+            if [ "$running" -eq 0 ] && [ "$pending" -eq 0 ] && [ -f "$DISPATCHED_FILE" ]; then
+                local enum_tasks=$(grep -c "enum" "$DISPATCHED_FILE" 2>/dev/null || echo 0)
+                if [ "$enum_tasks" -gt 0 ]; then
+                    return 0
+                fi
+            fi
+            ;;
+        vulnerability)
+            # Vulnerability complete when: no tasks running
+            if [ "$running" -eq 0 ] && [ "$pending" -eq 0 ]; then
+                return 0
+            fi
+            ;;
+        exploitation)
+            # Exploitation complete when: shell obtained OR no more exploits
+            local shell_obtained=$(jq -r '.flags.user != null or .flags.root != null' "$STATE_FILE" 2>/dev/null || echo false)
+            if [ "$shell_obtained" = "true" ] || ([ "$running" -eq 0 ] && [ "$pending" -eq 0 ]); then
+                return 0
+            fi
+            ;;
+        post_exploitation)
+            # Post-exploitation complete when: root obtained OR exhausted
+            local root_obtained=$(jq -r '.flags.root != null' "$STATE_FILE" 2>/dev/null || echo false)
+            if [ "$root_obtained" = "true" ] || ([ "$running" -eq 0 ] && [ "$pending" -eq 0 ]); then
+                return 0
+            fi
+            ;;
+        reporting)
+            if [ "$running" -eq 0 ] && [ "$pending" -eq 0 ]; then
+                return 0
+            fi
+            ;;
+    esac
+    return 1
+}
+
+# Check for regression triggers
+check_regression_triggers() {
+    local phase="$1"
+
+    # Get current counts
+    local curr_port_count=$(jq '.assets | map(select(.type == "port")) | length' "$FINDINGS_FILE" 2>/dev/null || echo 0)
+    local curr_asset_count=$(jq '.assets | length' "$FINDINGS_FILE" 2>/dev/null || echo 0)
+    local curr_finding_count=$(jq '.findings | length' "$FINDINGS_FILE" 2>/dev/null || echo 0)
+
+    # Detect significant new discoveries
+    local new_ports=$((curr_port_count - PREV_PORT_COUNT))
+    local new_assets=$((curr_asset_count - PREV_ASSET_COUNT))
+
+    # Update previous counts
+    PREV_PORT_COUNT=$curr_port_count
+    PREV_ASSET_COUNT=$curr_asset_count
+    PREV_FINDING_COUNT=$curr_finding_count
+
+    case "$phase" in
+        enumeration|vulnerability)
+            # If significant new ports discovered during enum/vuln, consider regressing to recon
+            if [ "$new_ports" -ge 3 ]; then
+                echo -e "${YELLOW}[Regression]${NC} $new_ports new ports discovered - expanding recon"
+                log_event "regression_trigger" "\"phase\":\"$phase\",\"trigger\":\"new_ports\",\"count\":$new_ports"
+
+                # Record regression but don't block - just dispatch more recon
+                if ! already_dispatched "shadow:expanded_scan"; then
+                    "$DISPATCH" queue shadow expanded_scan 1
+                    mark_dispatched "shadow:expanded_scan"
+                fi
+            fi
+            ;;
+        exploitation)
+            # If exploitation reveals new networks/hosts, expand scope
+            if [ "$new_assets" -ge 5 ]; then
+                echo -e "${YELLOW}[Regression]${NC} $new_assets new assets during exploitation - lateral expansion"
+                log_event "regression_trigger" "\"phase\":\"$phase\",\"trigger\":\"new_assets\",\"count\":$new_assets"
+            fi
+            ;;
+    esac
+}
+
+# Show current phase status
+show_phase_status() {
+    local phase=$(get_phase)
+    echo -e "${CYAN}═══════════════════════════════════════════${NC}"
+    echo -e "${CYAN}GHOST Phase Status${NC}"
+    echo -e "${CYAN}═══════════════════════════════════════════${NC}"
+    echo ""
+    echo -e "Current Phase: ${GREEN}$phase${NC}"
+    echo ""
+    echo "Phase Metrics:"
+    jq -r '.phase_metrics | to_entries[] | "  \(.key): \(.value | to_entries | map("\(.key)=\(.value)") | join(", "))"' "$STATE_FILE" 2>/dev/null
+    echo ""
+    echo "Findings Count:"
+    jq -r '.findings_count | to_entries[] | "  \(.key): \(.value)"' "$STATE_FILE" 2>/dev/null
+    echo ""
+    echo "Completed Phases:"
+    jq -r '.phases_completed | join(" → ")' "$STATE_FILE" 2>/dev/null
+    echo ""
 }
 
 # Check and dispatch based on triggers
