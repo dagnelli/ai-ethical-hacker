@@ -30,11 +30,12 @@ export GHOST_ENGAGEMENT="/tmp/ghost/active"
 
 ## Agent Directory
 
+### Core Agents
 | Codename | Role | Domain | File |
 |----------|------|--------|------|
 | **command** | Orchestrator | Engagement coordination | `.claude/agents/command.md` |
 | **shadow** | Recon Specialist | Information gathering | `.claude/agents/shadow.md` |
-| **spider** | Web Tester | Web application security | `.claude/agents/spider.md` |
+| **spider** | Web Coordinator | Web app testing orchestration | `.claude/agents/spider.md` |
 | **interceptor** | API Hunter | API security testing | `.claude/agents/interceptor.md` |
 | **mindbender** | LLM Specialist | AI/ML security | `.claude/agents/mindbender.md` |
 | **phantom** | Network Operator | Network/AD security | `.claude/agents/phantom.md` |
@@ -42,6 +43,14 @@ export GHOST_ENGAGEMENT="/tmp/ghost/active"
 | **breaker** | Exploit Artist | Vulnerability exploitation | `.claude/agents/breaker.md` |
 | **persistence** | Post-Exploit | Privilege escalation | `.claude/agents/persistence.md` |
 | **scribe** | Documentation | Reporting & compliance | `.claude/agents/scribe.md` |
+
+### Web Sub-Agents (OWASP WSTG 4.2)
+| Codename | Role | WSTG Coverage | File |
+|----------|------|---------------|------|
+| **venom** | Injection Specialist | WSTG-INPV (19 tests) | `.claude/agents/venom.md` |
+| **gatekeeper** | Auth/Access Specialist | WSTG-IDNT/ATHN/AUTHZ/SESS (28 tests) | `.claude/agents/gatekeeper.md` |
+| **trickster** | Logic Specialist | WSTG-BUSL (12 tests) | `.claude/agents/trickster.md` |
+| **specter** | Client-Side Specialist | WSTG-CLNT (13 tests) | `.claude/agents/specter.md` |
 
 ---
 
@@ -56,7 +65,7 @@ export GHOST_ENGAGEMENT="/tmp/ghost/active"
 ```
 @command - Begin web application assessment
 @shadow - Enumerate subdomains for target.com
-@spider - Test for SQL injection
+@spider - Coordinate full web app test (auto-dispatches sub-agents)
 @interceptor - Analyze JWT token security
 @mindbender - Test prompt injection
 @phantom - Active Directory attack paths
@@ -64,6 +73,12 @@ export GHOST_ENGAGEMENT="/tmp/ghost/active"
 @breaker - Buffer overflow guidance
 @persistence - Privilege escalation vectors
 @scribe - Calculate CVSS score
+
+# Web Sub-Agents (auto-dispatched by @spider or invoked directly)
+@venom - Test SQL injection on login form
+@gatekeeper - Test JWT algorithm confusion
+@trickster - Test race condition on coupon apply
+@specter - Test DOM XSS via URL hash
 ```
 
 ---
@@ -84,12 +99,40 @@ The intelligence gatherer. Passive and active reconnaissance.
 - Subdomain discovery
 - Technology fingerprinting
 
-### spider (Web Application)
-The web vulnerability hunter. OWASP Top 10 expertise.
-- SQL injection testing
-- XSS detection
-- Authentication testing
-- Full OWASP methodology
+### spider (Web Coordinator)
+The web application security coordinator. Orchestrates specialized sub-agents.
+- OWASP WSTG 4.2 methodology
+- Auto-dispatches @venom, @gatekeeper, @trickster, @specter
+- Handles WSTG-INFO, WSTG-CONF, WSTG-CRYP, WSTG-ERR directly
+- Aggregates and prioritizes web findings
+
+### venom (Injection Specialist)
+The injection specialist. SQL whispers secrets.
+- SQL injection (all types and DB variants)
+- XSS (reflected, stored, context-aware)
+- Command injection, SSTI, XXE, SSRF
+- WAF bypass techniques
+
+### gatekeeper (Auth/Access Specialist)
+The authentication and authorization breaker.
+- JWT attacks (none, confusion, cracking)
+- OAuth/OIDC exploitation
+- Session management attacks
+- IDOR and privilege escalation
+
+### trickster (Business Logic Specialist)
+The logic manipulator. Rules are suggestions.
+- Race conditions (Turbo Intruder)
+- Workflow bypass
+- Price/quantity manipulation
+- File upload attacks
+
+### specter (Client-Side Specialist)
+The browser haunter. DOM speaks to me.
+- DOM XSS (sources, sinks, clobbering)
+- CORS exploitation
+- WebSocket/postMessage attacks
+- Clickjacking
 
 ### interceptor (API Security)
 The API security specialist. REST, GraphQL, SOAP expertise.
@@ -283,14 +326,23 @@ export TARGET="10.10.10.100"
 ├── agents/
 │   ├── command.md      # Orchestrator agent
 │   ├── shadow.md       # Recon agent
-│   ├── spider.md       # Web application agent
+│   ├── spider.md       # Web coordinator agent
+│   ├── venom.md        # Injection specialist (WSTG-INPV)
+│   ├── gatekeeper.md   # Auth/access specialist (WSTG-IDNT/ATHN/AUTHZ/SESS)
+│   ├── trickster.md    # Business logic specialist (WSTG-BUSL)
+│   ├── specter.md      # Client-side specialist (WSTG-CLNT)
 │   ├── interceptor.md  # API security agent
 │   ├── mindbender.md   # LLM security agent
 │   ├── phantom.md      # Network/AD agent
 │   ├── skybreaker.md   # Cloud security agent
 │   ├── breaker.md      # Exploitation agent
 │   ├── persistence.md  # Post-exploitation agent
-│   └── scribe.md       # Reporting agent
+│   ├── scribe.md       # Reporting agent
+│   └── references/     # Research documents
+│       ├── client-side-vulnerabilities.md
+│       └── business-logic-vulnerabilities.md
+├── resources/
+│   └── business-logic-vulnerabilities.md
 ├── scripts/
 │   ├── ghost-init.sh           # Standard engagement init
 │   ├── ghost-parallel-init.sh  # Parallel mode init
@@ -305,17 +357,22 @@ export TARGET="10.10.10.100"
 
 ## Version
 
-**GHOST v2.2** - December 2025
+**GHOST v2.3** - December 2025
 
-### New in v2.2 (PTES Enhancement)
-- **PTES Phase Sequencing**: Proper methodology flow with completion criteria
-- **Auto-Progression**: Phases advance automatically when criteria met
-- **Auto-Regression**: Automatic expansion when new attack surface discovered
-- **MITRE ATT&CK Integration**: T-codes in all findings
-- **CVSS 4.0**: Latest scoring standard with full vector support
-- **CWE/CVE Mapping**: Vulnerability classification in findings
-- **Phase Metrics**: Track ports, assets, vulns per phase
-- **Phase History**: Full audit trail of phase transitions
+### New in v2.3 (Web Sub-Agents)
+- **OWASP WSTG 4.2 Coverage**: Full 72+ test coverage via specialized agents
+- **@spider Coordinator**: Orchestrates web testing with auto-dispatch
+- **@venom Agent**: Injection specialist (SQLi, XSS, CMDi, SSTI, XXE, SSRF)
+- **@gatekeeper Agent**: Auth/access specialist (JWT, OAuth, IDOR, sessions)
+- **@trickster Agent**: Business logic specialist (race, workflow, upload)
+- **@specter Agent**: Client-side specialist (DOM XSS, CORS, WebSockets)
+- **Research Documents**: Comprehensive technique references with 2024-2025 CVEs
+
+### Previous (v2.2)
+- PTES Phase Sequencing with completion criteria
+- Auto-Progression/Regression
+- MITRE ATT&CK, CVSS 4.0, CWE/CVE mapping
+- Phase metrics and history
 
 ### Previous (v2.1)
 - Concurrent agent execution (Hunter-Gather)
@@ -324,11 +381,13 @@ export TARGET="10.10.10.100"
 - Runlog audit trail
 
 Built with research from:
+- OWASP WSTG 4.2 (Web Security Testing Guide)
 - PTES (Penetration Testing Execution Standard)
 - NIST SP 800-115
 - OWASP Testing Guides 2024-2025
 - MITRE ATT&CK Framework
 - CVSS 4.0 Specification
+- PortSwigger Research
 - HackTricks & PayloadsAllTheThings
 
 ---
