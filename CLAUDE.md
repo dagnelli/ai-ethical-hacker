@@ -218,7 +218,7 @@ export TARGET="10.10.10.100"
 ~/.claude/scripts/ghost-watchdog.sh start
 ```
 
-### Smart Dispatch Logic
+### Smart Dispatch Logic (v2.0)
 - **Parallel within phases**: All recon runs simultaneously
 - **Sequential between phases**: Recon completes before enumeration
 - **Trigger-based**: Findings auto-dispatch appropriate agents
@@ -226,19 +226,34 @@ export TARGET="10.10.10.100"
   - Port 445 → @phantom
   - /api/ endpoint → @interceptor
   - LLM detected → @mindbender
-- **Approval gates**: Exploitation requires explicit approval
+- **Auto-progression**: Phases advance when completion criteria met
+- **Auto-regression**: New discoveries trigger expanded recon
 
-### Manual Task Management
+### Phase Completion Criteria
+| Phase | Criteria | Auto-Progress To |
+|-------|----------|------------------|
+| recon | tasks done + ports ≥ 1 | enumeration |
+| enumeration | triggered tasks done | vulnerability |
+| vulnerability | vuln scans done | exploitation (if vulns) |
+| exploitation | shell or exhausted | post_exploitation |
+| post_exploitation | root or exhausted | reporting |
+
+### Enhanced Findings (v2.0)
 ```bash
-# Queue a task manually
-~/.claude/scripts/ghost-dispatch.sh queue shadow port_scan 1
+# Add finding with MITRE ATT&CK, CVSS 4.0, CWE, CVE
+~/.claude/scripts/ghost-findings.sh add critical "SQL Injection" "Login form" T1190 CWE-89 9.8 CVE-2024-1234
 
-# Check what's running
-~/.claude/scripts/ghost-dispatch.sh status
+# Add port (auto-tagged)
+~/.claude/scripts/ghost-findings.sh port 443 https "nginx 1.24"
 
-# Add findings manually
-~/.claude/scripts/ghost-findings.sh add high "SQLi Found" "Login page vulnerable"
-~/.claude/scripts/ghost-findings.sh port 22 ssh "OpenSSH 8.9"
+# Add asset with tags
+~/.claude/scripts/ghost-findings.sh asset endpoint "/api/users" "REST API" "api,auth"
+
+# Phase management
+~/.claude/scripts/ghost-watchdog.sh phase              # Show phase & metrics
+~/.claude/scripts/ghost-watchdog.sh regress recon      # Force regression
+~/.claude/scripts/ghost-watchdog.sh flag user <hash>   # Capture user flag
+~/.claude/scripts/ghost-watchdog.sh flag root <hash>   # Capture root flag
 ```
 
 ---
@@ -290,21 +305,31 @@ export TARGET="10.10.10.100"
 
 ## Version
 
-**GHOST v2.1** - December 2025
+**GHOST v2.2** - December 2025
 
-Updated with parallel mode (Hunter-Gather):
-- Concurrent agent execution
+### New in v2.2 (PTES Enhancement)
+- **PTES Phase Sequencing**: Proper methodology flow with completion criteria
+- **Auto-Progression**: Phases advance automatically when criteria met
+- **Auto-Regression**: Automatic expansion when new attack surface discovered
+- **MITRE ATT&CK Integration**: T-codes in all findings
+- **CVSS 4.0**: Latest scoring standard with full vector support
+- **CWE/CVE Mapping**: Vulnerability classification in findings
+- **Phase Metrics**: Track ports, assets, vulns per phase
+- **Phase History**: Full audit trail of phase transitions
+
+### Previous (v2.1)
+- Concurrent agent execution (Hunter-Gather)
 - Auto-dispatch based on triggers
 - Shared state via JSON files
 - Runlog audit trail
-- Smart phase sequencing
 
 Built with research from:
+- PTES (Penetration Testing Execution Standard)
+- NIST SP 800-115
 - OWASP Testing Guides 2024-2025
 - MITRE ATT&CK Framework
-- HackTricks
-- PayloadsAllTheThings
-- Latest CVE research
+- CVSS 4.0 Specification
+- HackTricks & PayloadsAllTheThings
 
 ---
 

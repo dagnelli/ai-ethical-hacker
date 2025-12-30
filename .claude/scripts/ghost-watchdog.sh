@@ -218,21 +218,27 @@ show_phase_status() {
     echo ""
 }
 
-# Check and dispatch based on triggers
+# Check and dispatch based on triggers (PTES v2.0 with auto-progression)
 check_and_dispatch() {
     local phase=$(get_phase)
-    local triggers=$("$FINDINGS" triggers)
-    local running=$("$DISPATCH" running)
-    local pending=$("$DISPATCH" pending)
+    local triggers=$("$FINDINGS" triggers 2>/dev/null || echo "")
+    local running=$("$DISPATCH" running 2>/dev/null || echo 0)
+    local pending=$("$DISPATCH" pending 2>/dev/null || echo 0)
 
     echo -e "${CYAN}[Watchdog]${NC} Phase: $phase | Running: $running | Pending: $pending"
 
-    # Phase-based dispatch logic
+    # Check for regression triggers (new discoveries that warrant going back)
+    check_regression_triggers "$phase"
+
+    # Export current phase for findings attribution
+    export GHOST_PHASE="$phase"
+
+    # Phase-based dispatch logic with completion criteria
     case "$phase" in
         init)
             # Start recon phase
-            set_phase "recon"
-            echo -e "${GREEN}[Dispatch]${NC} Starting recon phase..."
+            set_phase "recon" "engagement_start"
+            echo -e "${GREEN}[Dispatch]${NC} Starting PTES Intelligence Gathering phase..."
 
             if ! already_dispatched "shadow:ports"; then
                 "$DISPATCH" queue shadow port_scan 1
@@ -249,42 +255,43 @@ check_and_dispatch() {
             ;;
 
         recon)
-            # Check if recon complete, move to enumeration
-            if [ "$running" -eq 0 ] && [ "$pending" -eq 0 ]; then
-                set_phase "enumeration"
+            # Check completion criteria for recon
+            if check_completion_criteria "recon"; then
+                echo -e "${GREEN}[Criteria Met]${NC} Recon phase complete - auto-progressing"
+                set_phase "enumeration" "criteria_met"
                 check_and_dispatch  # Recurse to handle new phase
                 return
             fi
             ;;
 
         enumeration)
-            # Dispatch based on findings
+            # Dispatch based on findings (trigger-based)
             for trigger in $triggers; do
                 case "$trigger" in
                     web)
                         if ! already_dispatched "spider:enum"; then
-                            echo -e "${GREEN}[Dispatch]${NC} Web ports detected -> @spider"
+                            echo -e "${GREEN}[Dispatch]${NC} Web ports detected → @spider"
                             "$DISPATCH" queue spider web_enum 2
                             mark_dispatched "spider:enum"
                         fi
                         ;;
                     smb)
                         if ! already_dispatched "phantom:smb"; then
-                            echo -e "${GREEN}[Dispatch]${NC} SMB detected -> @phantom"
+                            echo -e "${GREEN}[Dispatch]${NC} SMB detected → @phantom"
                             "$DISPATCH" queue phantom smb_enum 2
                             mark_dispatched "phantom:smb"
                         fi
                         ;;
                     ssh)
                         if ! already_dispatched "phantom:ssh"; then
-                            echo -e "${GREEN}[Dispatch]${NC} SSH detected -> @phantom"
+                            echo -e "${GREEN}[Dispatch]${NC} SSH detected → @phantom"
                             "$DISPATCH" queue phantom ssh_enum 3
                             mark_dispatched "phantom:ssh"
                         fi
                         ;;
                     api)
                         if ! already_dispatched "interceptor:enum"; then
-                            echo -e "${GREEN}[Dispatch]${NC} API detected -> @interceptor"
+                            echo -e "${GREEN}[Dispatch]${NC} API detected → @interceptor"
                             "$DISPATCH" queue interceptor api_enum 2
                             mark_dispatched "interceptor:enum"
                         fi
@@ -292,60 +299,84 @@ check_and_dispatch() {
                 esac
             done
 
-            # Check for phase completion
-            if [ "$running" -eq 0 ] && [ "$pending" -eq 0 ] && [ -f "$DISPATCHED_FILE" ]; then
-                local enum_tasks=$(grep -c "enum" "$DISPATCHED_FILE" 2>/dev/null || echo 0)
-                if [ "$enum_tasks" -gt 0 ]; then
-                    set_phase "vulnerability"
-                fi
+            # Check completion criteria
+            if check_completion_criteria "enumeration"; then
+                echo -e "${GREEN}[Criteria Met]${NC} Enumeration phase complete - auto-progressing"
+                set_phase "vulnerability" "criteria_met"
             fi
             ;;
 
         vulnerability)
             # Queue vulnerability scans based on what was enumerated
             if already_dispatched "spider:enum" && ! already_dispatched "spider:vuln"; then
-                echo -e "${GREEN}[Dispatch]${NC} Web enumerated -> Vulnerability scan"
+                echo -e "${GREEN}[Dispatch]${NC} Web enumerated → Vulnerability scan"
                 "$DISPATCH" queue spider vuln_scan 3
                 mark_dispatched "spider:vuln"
             fi
 
             if already_dispatched "interceptor:enum" && ! already_dispatched "interceptor:vuln"; then
-                echo -e "${GREEN}[Dispatch]${NC} API enumerated -> API testing"
+                echo -e "${GREEN}[Dispatch]${NC} API enumerated → API testing"
                 "$DISPATCH" queue interceptor api_test 3
                 mark_dispatched "interceptor:vuln"
             fi
 
             if already_dispatched "phantom:smb" && ! already_dispatched "phantom:vuln"; then
-                echo -e "${GREEN}[Dispatch]${NC} SMB enumerated -> SMB attacks"
+                echo -e "${GREEN}[Dispatch]${NC} SMB enumerated → SMB attacks"
                 "$DISPATCH" queue phantom smb_attack 3
                 mark_dispatched "phantom:vuln"
             fi
 
-            # Check for phase completion
-            if [ "$running" -eq 0 ] && [ "$pending" -eq 0 ]; then
-                local vuln_count=$(jq '.findings | length' "$ENGAGEMENT/findings.json")
+            # Check completion criteria - auto-progress to exploitation
+            if check_completion_criteria "vulnerability"; then
+                local vuln_count=$(jq '.findings | length' "$FINDINGS_FILE" 2>/dev/null || echo 0)
+                echo -e "${GREEN}[Criteria Met]${NC} Vulnerability phase complete. $vuln_count findings."
+
+                # Auto-progress (no approval gate per user request)
                 if [ "$vuln_count" -gt 0 ]; then
-                    echo -e "${YELLOW}[Watchdog]${NC} Vulnerability phase complete. $vuln_count findings."
-                    echo -e "${YELLOW}[Watchdog]${NC} Review findings before exploitation phase."
-                    set_phase "exploitation_pending"
+                    set_phase "exploitation" "vulns_found"
+                    if ! already_dispatched "breaker:exploit"; then
+                        "$DISPATCH" queue breaker exploit 4
+                        mark_dispatched "breaker:exploit"
+                    fi
+                else
+                    echo -e "${YELLOW}[Watchdog]${NC} No vulnerabilities found - moving to reporting"
+                    set_phase "reporting" "no_vulns"
                 fi
             fi
             ;;
 
-        exploitation_pending)
-            echo -e "${YELLOW}[Watchdog]${NC} Awaiting approval for exploitation phase."
-            echo -e "${YELLOW}[Watchdog]${NC} Run: ghost-watchdog.sh approve-exploit"
-            ;;
-
         exploitation)
-            if [ "$running" -eq 0 ] && [ "$pending" -eq 0 ]; then
-                set_phase "post_exploitation"
+            # Check completion criteria
+            if check_completion_criteria "exploitation"; then
+                local shell_obtained=$(jq -r '.flags.user != null' "$STATE_FILE" 2>/dev/null || echo false)
+                if [ "$shell_obtained" = "true" ]; then
+                    echo -e "${GREEN}[Criteria Met]${NC} Shell obtained - auto-progressing to post-exploitation"
+                    set_phase "post_exploitation" "shell_obtained"
+                    if ! already_dispatched "persistence:privesc"; then
+                        "$DISPATCH" queue persistence privilege_escalation 1
+                        mark_dispatched "persistence:privesc"
+                    fi
+                else
+                    echo -e "${YELLOW}[Watchdog]${NC} Exploitation exhausted without shell - moving to reporting"
+                    set_phase "reporting" "exploits_exhausted"
+                fi
             fi
             ;;
 
         post_exploitation)
-            if [ "$running" -eq 0 ] && [ "$pending" -eq 0 ]; then
-                set_phase "reporting"
+            # Dispatch post-exploitation tasks
+            if ! already_dispatched "persistence:creds"; then
+                "$DISPATCH" queue persistence credential_harvest 2
+                mark_dispatched "persistence:creds"
+            fi
+
+            # Check completion criteria
+            if check_completion_criteria "post_exploitation"; then
+                local root_obtained=$(jq -r '.flags.root != null' "$STATE_FILE" 2>/dev/null || echo false)
+                if [ "$root_obtained" = "true" ]; then
+                    echo -e "${GREEN}[Criteria Met]${NC} Root obtained - engagement successful!"
+                fi
+                set_phase "reporting" "post_exploit_complete"
                 if ! already_dispatched "scribe:report"; then
                     "$DISPATCH" queue scribe generate_report 5
                     mark_dispatched "scribe:report"
@@ -354,10 +385,17 @@ check_and_dispatch() {
             ;;
 
         reporting)
-            if [ "$running" -eq 0 ] && [ "$pending" -eq 0 ]; then
-                set_phase "complete"
-                echo -e "${GREEN}[Watchdog]${NC} Engagement complete!"
+            if check_completion_criteria "reporting"; then
+                set_phase "complete" "report_generated"
+                echo -e "${GREEN}════════════════════════════════════════════${NC}"
+                echo -e "${GREEN}[GHOST] Engagement Complete!${NC}"
+                echo -e "${GREEN}════════════════════════════════════════════${NC}"
+                show_phase_status
             fi
+            ;;
+
+        complete)
+            echo -e "${GREEN}[Watchdog]${NC} Engagement already complete."
             ;;
     esac
 }
@@ -437,17 +475,65 @@ stop_watchdog() {
     fi
 }
 
-# Approve exploitation phase
+# Approve exploitation phase (legacy - kept for compatibility)
 approve_exploit() {
     local phase=$(get_phase)
-    if [ "$phase" = "exploitation_pending" ]; then
-        set_phase "exploitation"
+    if [ "$phase" = "exploitation_pending" ] || [ "$phase" = "vulnerability" ]; then
+        set_phase "exploitation" "manual_approval"
         echo -e "${GREEN}[Watchdog]${NC} Exploitation phase approved!"
         "$DISPATCH" queue breaker exploit 4
         mark_dispatched "breaker:exploit"
     else
-        echo "Not in exploitation_pending phase (current: $phase)"
+        echo "Not in exploitation_pending/vulnerability phase (current: $phase)"
     fi
+}
+
+# Force regression to a specific phase
+force_regress() {
+    local target_phase="$1"
+    local current_phase=$(get_phase)
+
+    # Validate target phase
+    case "$target_phase" in
+        recon|enumeration|vulnerability|exploitation|post_exploitation)
+            set_phase "$target_phase" "manual_regression"
+            echo -e "${YELLOW}[Regression]${NC} Forced regression from $current_phase to $target_phase"
+
+            # Clear dispatched markers for the regressed phase
+            case "$target_phase" in
+                recon)
+                    sed -i '/shadow:/d' "$DISPATCHED_FILE" 2>/dev/null || true
+                    ;;
+                enumeration)
+                    sed -i '/spider:enum/d' "$DISPATCHED_FILE" 2>/dev/null || true
+                    sed -i '/phantom:.*enum/d' "$DISPATCHED_FILE" 2>/dev/null || true
+                    sed -i '/interceptor:enum/d' "$DISPATCHED_FILE" 2>/dev/null || true
+                    ;;
+                vulnerability)
+                    sed -i '/vuln/d' "$DISPATCHED_FILE" 2>/dev/null || true
+                    ;;
+            esac
+            ;;
+        *)
+            echo "Invalid phase: $target_phase"
+            echo "Valid phases: recon, enumeration, vulnerability, exploitation, post_exploitation"
+            return 1
+            ;;
+    esac
+}
+
+# Set flag (user or root obtained)
+set_flag() {
+    local flag_type="$1"  # user or root
+    local flag_value="$2"
+    local tmp=$(mktemp)
+
+    jq --arg type "$flag_type" --arg val "$flag_value" \
+       '.flags[$type] = $val' "$STATE_FILE" > "$tmp"
+    mv "$tmp" "$STATE_FILE"
+
+    echo -e "${GREEN}[Flag]${NC} $flag_type flag set: $flag_value"
+    log_event "flag_captured" "\"type\":\"$flag_type\",\"value\":\"$flag_value\""
 }
 
 # Main
@@ -467,29 +553,54 @@ case "${1:-check}" in
     approve-exploit)
         approve_exploit
         ;;
+    phase)
+        show_phase_status
+        ;;
+    regress)
+        [ -z "$2" ] && { echo "Usage: $0 regress <phase>"; exit 1; }
+        force_regress "$2"
+        ;;
+    flag)
+        [ -z "$2" ] || [ -z "$3" ] && { echo "Usage: $0 flag <user|root> <value>"; exit 1; }
+        set_flag "$2" "$3"
+        ;;
     status)
         if [ -f "$PID_FILE" ]; then
-            local pid=$(cat "$PID_FILE")
+            pid=$(cat "$PID_FILE")
             if kill -0 "$pid" 2>/dev/null; then
                 echo "Watchdog running (PID: $pid)"
+                echo ""
+                show_phase_status
             else
                 echo "Watchdog not running (stale PID file)"
             fi
         else
             echo "Watchdog not running"
+            echo ""
+            show_phase_status
         fi
         ;;
     *)
-        echo "GHOST Watchdog - Auto-Dispatch Monitor"
+        echo "GHOST Watchdog v2.0 - PTES Auto-Dispatch with Phase Sequencing"
         echo ""
         echo "Usage: $0 <command>"
         echo ""
         echo "Commands:"
-        echo "  start           - Start background monitoring"
-        echo "  stop            - Stop monitoring"
-        echo "  check           - One-time trigger check"
-        echo "  dispatch        - Force dispatch check"
-        echo "  approve-exploit - Approve exploitation phase"
-        echo "  status          - Check if watchdog is running"
+        echo "  start              - Start background monitoring"
+        echo "  stop               - Stop monitoring"
+        echo "  check              - One-time trigger check"
+        echo "  dispatch           - Force dispatch check"
+        echo "  phase              - Show current phase and metrics"
+        echo "  regress <phase>    - Force regression to phase"
+        echo "  flag <type> <val>  - Set user/root flag"
+        echo "  approve-exploit    - Manual approval for exploitation"
+        echo "  status             - Check watchdog and show phase"
+        echo ""
+        echo "Phases: init → recon → enumeration → vulnerability → exploitation → post_exploitation → reporting → complete"
+        echo ""
+        echo "Auto-Progression:"
+        echo "  - Phases auto-progress when completion criteria are met"
+        echo "  - Auto-regression triggered by new significant discoveries"
+        echo "  - No approval gates (per configuration)"
         ;;
 esac

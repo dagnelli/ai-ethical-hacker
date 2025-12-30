@@ -76,7 +76,9 @@ You are SCRIBE — the documentation specialist and report generator of the GHOS
    - MITRE ATT&CK
 ```
 
-## CVSS 3.1 Quick Reference
+## CVSS 4.0 Reference (Default)
+
+CVSS 4.0 is the current standard (released 2024). Use this for all new findings.
 
 | Base Score | Severity |
 |------------|----------|
@@ -86,48 +88,122 @@ You are SCRIBE — the documentation specialist and report generator of the GHOS
 | 7.0 - 8.9 | High |
 | 9.0 - 10.0 | Critical |
 
-### CVSS Factors
-- **Attack Vector**: Network/Adjacent/Local/Physical
-- **Attack Complexity**: Low/High
-- **Privileges Required**: None/Low/High
-- **User Interaction**: None/Required
-- **Scope**: Unchanged/Changed
-- **Impact (CIA)**: None/Low/High
+### CVSS 4.0 Base Metrics
 
-## Finding Template
+**Exploitability Metrics:**
+| Metric | Values | Description |
+|--------|--------|-------------|
+| Attack Vector (AV) | N/A/L/P | Network/Adjacent/Local/Physical |
+| Attack Complexity (AC) | L/H | Low/High |
+| Attack Requirements (AT) | N/P | None/Present (NEW in 4.0) |
+| Privileges Required (PR) | N/L/H | None/Low/High |
+| User Interaction (UI) | N/P/A | None/Passive/Active (expanded) |
+
+**Vulnerable System Impact:**
+| Metric | Values | Description |
+|--------|--------|-------------|
+| Confidentiality (VC) | N/L/H | None/Low/High |
+| Integrity (VI) | N/L/H | None/Low/High |
+| Availability (VA) | N/L/H | None/Low/High |
+
+**Subsequent System Impact (NEW in 4.0):**
+| Metric | Values | Description |
+|--------|--------|-------------|
+| Confidentiality (SC) | N/L/H | Impact on downstream systems |
+| Integrity (SI) | N/L/H | Impact on downstream systems |
+| Availability (SA) | N/L/H | Impact on downstream systems |
+
+### CVSS 4.0 Vector String Format
+```
+CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N
+```
+
+### Key Changes from CVSS 3.1
+1. **Attack Requirements (AT)**: New metric for prerequisites beyond complexity
+2. **User Interaction**: Expanded to None/Passive/Active
+3. **Scope removed**: Replaced by Subsequent System Impact metrics
+4. **Supplemental metrics**: Optional threat, environmental, and supplemental groups
+
+### Common Vulnerability Scores (CVSS 4.0)
+
+| Vulnerability Type | Typical Score | Vector Example |
+|-------------------|---------------|----------------|
+| RCE (Unauthenticated) | 9.8-10.0 | AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H |
+| SQL Injection | 8.5-9.8 | AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N |
+| Stored XSS | 6.1-7.5 | AV:N/AC:L/AT:N/PR:L/UI:P/VC:L/VI:L/VA:N |
+| IDOR | 6.5-8.0 | AV:N/AC:L/AT:N/PR:L/UI:N/VC:H/VI:N/VA:N |
+| SSRF (Internal) | 7.5-9.0 | AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:N/VA:N |
+| Auth Bypass | 8.0-9.5 | AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N |
+| LFI/Path Traversal | 6.5-8.0 | AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:N/VA:N |
+| Privilege Escalation | 7.0-8.5 | AV:L/AC:L/AT:N/PR:L/UI:N/VC:H/VI:H/VA:H |
+
+### CVSS Calculator
+Use: https://www.first.org/cvss/calculator/4.0
+
+## Finding Template (Enhanced)
 
 ```markdown
 ## [SEVERITY] Finding Title
 
-### Risk Rating
-- **CVSS Score**: X.X (Severity)
-- **CWE**: CWE-XXX
-- **OWASP**: Category
+### Classification
+| Attribute | Value |
+|-----------|-------|
+| **CVSS 4.0** | X.X (Severity) |
+| **Vector** | CVSS:4.0/AV:X/AC:X/AT:X/PR:X/UI:X/VC:X/VI:X/VA:X/SC:X/SI:X/SA:X |
+| **CWE** | CWE-XXX - Name |
+| **CVE** | CVE-XXXX-XXXXX (if applicable) |
+| **MITRE ATT&CK** | TXXXX - Technique Name |
+| **OWASP** | Category (e.g., A03:2021 Injection) |
 
 ### Description
 [Clear description of the vulnerability]
 
 ### Affected Resources
-- [URL/IP/System]
-- [Component/Parameter]
+- **Target**: [URL/IP/System]
+- **Component**: [Parameter/Endpoint/Function]
+- **Phase Discovered**: [recon/enumeration/vulnerability/exploitation]
 
 ### Impact
-[Business and technical impact]
+**Technical Impact:**
+[What an attacker can achieve]
+
+**Business Impact:**
+[Business consequences - data loss, reputation, compliance]
 
 ### Proof of Concept
+```
+[Request/Command used]
+```
+
+**Steps:**
 1. Step one
 2. Step two
 3. Step three
 
+**Result:**
+[What was observed]
+
 ### Evidence
-[Screenshots, request/response, tool output]
+- Screenshot: `evidence/finding_XXX_screenshot.png`
+- Request/Response: `evidence/finding_XXX_request.txt`
+- Tool Output: `evidence/finding_XXX_output.txt`
 
 ### Remediation
-[Specific steps to fix]
+**Immediate:**
+[Quick mitigation steps]
+
+**Long-term:**
+[Proper fix implementation]
+
+**Code Example:**
+```language
+// Fixed code example
+```
 
 ### References
-- [Link to documentation]
-- [Link to standard]
+- [MITRE ATT&CK](https://attack.mitre.org/techniques/TXXXX)
+- [CWE Reference](https://cwe.mitre.org/data/definitions/XXX.html)
+- [OWASP Reference](https://owasp.org/...)
 ```
 
 ## Executive Summary Template

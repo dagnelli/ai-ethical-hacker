@@ -82,14 +82,37 @@ PHASE 2: GATHER & TRIGGER
 # Check dispatch status
 ~/.claude/scripts/ghost-dispatch.sh status
 
-# Add findings
-~/.claude/scripts/ghost-findings.sh add <severity> <title> [description]
+# Add findings (enhanced with ATT&CK, CVSS 4.0, CWE/CVE)
+~/.claude/scripts/ghost-findings.sh add <severity> <title> [desc] [T-code] [CWE] [CVSS] [CVE]
+# Example:
+~/.claude/scripts/ghost-findings.sh add critical "SQL Injection" "Login form" T1190 CWE-89 9.8 CVE-2024-1234
+
+# Add port (auto-tagged with web/smb/ssh/etc)
 ~/.claude/scripts/ghost-findings.sh port <port> <service> [version]
-~/.claude/scripts/ghost-findings.sh asset <type> <value>
+
+# Add asset with tags
+~/.claude/scripts/ghost-findings.sh asset <type> <value> [info] [tags]
+# Example:
+~/.claude/scripts/ghost-findings.sh asset endpoint "/api/users" "REST API" "api,auth"
+
+# Phase management
+~/.claude/scripts/ghost-watchdog.sh phase           # Show current phase & metrics
+~/.claude/scripts/ghost-watchdog.sh regress <phase> # Force regression
+~/.claude/scripts/ghost-watchdog.sh flag user <hash> # Set user flag captured
+~/.claude/scripts/ghost-watchdog.sh flag root <hash> # Set root flag captured
 
 # Start auto-dispatch watchdog
 ~/.claude/scripts/ghost-watchdog.sh start
 ```
+
+### Enhanced Findings Schema (v2.0)
+
+All findings now include:
+- **MITRE ATT&CK T-code**: Technique ID (e.g., T1190)
+- **CWE**: Weakness ID (e.g., CWE-89)
+- **CVE**: If known vulnerability
+- **CVSS 4.0**: Score and severity
+- **Phase**: When discovered (recon/enum/vuln/exploit/post)
 
 ### Smart Dispatch Rules
 - **Parallel WITHIN phases**: All recon tasks run simultaneously
@@ -112,17 +135,65 @@ Then gather results:
 TaskOutput(task_id="...", block=true)  # Wait for completion
 ```
 
-## PTES Methodology Flow
+## PTES Methodology Flow (v2.0 - Auto-Progression)
 
 ```
-1. PRE-ENGAGEMENT        → Scope, authorization, rules
-2. INTELLIGENCE GATHERING → @shadow (Recon Agent)
-3. THREAT MODELING        → Attack surface analysis
-4. VULNERABILITY ANALYSIS → @spider/@interceptor/@mindbender
-5. EXPLOITATION           → @breaker (Exploit Agent)
-6. POST-EXPLOITATION      → @persistence (Post-Exploit Agent)
-7. REPORTING              → @scribe (Report Agent)
+PHASE SEQUENCE (Auto-Progress When Criteria Met):
+
+┌─────────────────────────────────────────────────────────────────┐
+│ 1. INIT                                                         │
+│    └─► Auto-progress to recon on engagement start               │
+├─────────────────────────────────────────────────────────────────┤
+│ 2. RECON (Intelligence Gathering) → @shadow                     │
+│    Completion: tasks_done AND ports_found >= 1                  │
+│    └─► Auto-progress to enumeration                             │
+├─────────────────────────────────────────────────────────────────┤
+│ 3. ENUMERATION (Threat Modeling) → @spider/@phantom/@interceptor│
+│    Triggers: port 80/443→spider, 445→phantom, /api/→interceptor │
+│    Completion: all triggered tasks done                         │
+│    Regression: 3+ new ports → expand recon                      │
+│    └─► Auto-progress to vulnerability                           │
+├─────────────────────────────────────────────────────────────────┤
+│ 4. VULNERABILITY → @spider/@interceptor/@mindbender/@phantom    │
+│    Completion: all vuln scans done                              │
+│    Regression: new endpoints → expand enumeration               │
+│    └─► Auto-progress to exploitation (if vulns found)           │
+├─────────────────────────────────────────────────────────────────┤
+│ 5. EXPLOITATION → @breaker                                      │
+│    Completion: shell_obtained OR exploits_exhausted             │
+│    └─► Auto-progress to post_exploitation (if shell)            │
+│    └─► Skip to reporting (if no shell)                          │
+├─────────────────────────────────────────────────────────────────┤
+│ 6. POST-EXPLOITATION → @persistence                             │
+│    Completion: root_obtained OR lateral_exhausted               │
+│    Regression: new network segment → expand recon               │
+│    └─► Auto-progress to reporting                               │
+├─────────────────────────────────────────────────────────────────┤
+│ 7. REPORTING → @scribe                                          │
+│    Completion: report_generated                                 │
+│    └─► COMPLETE                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
+
+### Phase Completion Criteria
+
+| Phase | Criteria | Auto-Progress To |
+|-------|----------|------------------|
+| recon | No tasks running + ports found ≥ 1 | enumeration |
+| enumeration | All triggered enum tasks complete | vulnerability |
+| vulnerability | All vuln scans complete | exploitation (if vulns) or reporting |
+| exploitation | Shell obtained or all exploits tried | post_exploitation or reporting |
+| post_exploitation | Root obtained or exhausted | reporting |
+| reporting | Report generated | complete |
+
+### Regression Triggers (Automatic)
+
+| Trigger | Action | Reason |
+|---------|--------|--------|
+| 3+ new ports in enum/vuln | Dispatch expanded recon | New attack surface |
+| 5+ new assets in exploit | Log for lateral movement | Pivot opportunities |
+| Auth bypass found | Expand enumeration | Deeper access available |
+| New network segment | Regress to recon | Entirely new scope |
 
 ## Agent Delegation Matrix
 
