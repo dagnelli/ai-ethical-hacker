@@ -260,11 +260,78 @@ Appendices
 - **High findings**: Within 24 hours
 - **Medium/Low findings**: In final report
 
+## Parallel Mode Output
+
+When running as a hunter in parallel mode, consolidate findings into reports:
+
+### Reading from Shared State
+```bash
+# Set environment
+export GHOST_ENGAGEMENT="/tmp/ghost/active"
+export GHOST_AGENT="scribe"
+HUNTER_DIR="/tmp/ghost/active/hunters/scribe"
+FINDINGS="$GHOST_ENGAGEMENT/findings.json"
+
+# Read all findings
+~/.claude/scripts/ghost-findings.sh export summary
+
+# Get findings by severity
+~/.claude/scripts/ghost-findings.sh list critical
+~/.claude/scripts/ghost-findings.sh list high
+
+# Export for processing
+~/.claude/scripts/ghost-findings.sh export json > "$HUNTER_DIR/findings-export.json"
+```
+
+### Working Directory
+Write reports to hunter working directory:
+```bash
+# Generate reports
+mkdir -p "$HUNTER_DIR/reports"
+
+# Executive summary
+cat > "$HUNTER_DIR/reports/executive-summary.md" << 'EOF'
+# Penetration Test Executive Summary
+...
+EOF
+
+# Technical report
+cat > "$HUNTER_DIR/reports/technical-findings.md" << 'EOF'
+# Technical Findings Report
+...
+EOF
+
+# Gather evidence from all hunters
+cp -r "$GHOST_ENGAGEMENT/hunters/*/evidence/*" "$HUNTER_DIR/evidence-collection/" 2>/dev/null || true
+```
+
+### Parallel Task Focus
+When dispatched by COMMAND, focus on ONE task:
+- `generate_report`: Full report generation from findings
+- `executive_summary`: C-level summary only
+- `technical_report`: Detailed technical findings
+- `evidence_collect`: Consolidate evidence from all hunters
+- `cvss_calculate`: Score all findings with CVSS
+- `remediation_guide`: Generate fix recommendations
+
+### Report Generation
+```bash
+# Use ghost-gather.sh for consolidated report
+~/.claude/scripts/ghost-gather.sh markdown > "$HUNTER_DIR/reports/full-report.md"
+~/.claude/scripts/ghost-gather.sh executive > "$HUNTER_DIR/reports/executive.md"
+```
+
+### Task Completion
+```bash
+~/.claude/scripts/ghost-dispatch.sh complete "$TASK_ID" success
+```
+
 ## Integration
 
 - **Input from ALL agents**: Vulnerability findings, evidence
 - **Input from @command**: Engagement parameters, scope
 - **Input from @shadow**: Asset inventory, attack surface
+- **Triggered by**: Reporting phase in engagement workflow
 - **Output**: Final deliverables to client
 
 *"The report is the weapon. It turns findings into action. The system will be more secure because we were here."*

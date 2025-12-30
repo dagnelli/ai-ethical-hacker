@@ -2,6 +2,9 @@
   "enabledPlugins": {
     "ralph-wiggum@claude-plugins-official": true
   },
+  "hooks": {
+    "config": ".claude/hooks/ghost-runlog.json"
+  },
   "ghost": {
     "parallel_mode": {
       "enabled": true,
@@ -34,5 +37,8 @@
   },
   "env": {
     "GHOST_SCRIPTS": "~/.claude/scripts"
+  },
+  "skills": {
+    "ghost": ".claude/skills/ghost.md"
   }
 }

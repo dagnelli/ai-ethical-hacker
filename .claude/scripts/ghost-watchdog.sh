@@ -206,7 +206,30 @@ check_and_dispatch() {
     esac
 }
 
-# Start background monitoring
+# File watcher for findings.json changes
+LAST_FINDINGS_HASH=""
+
+get_findings_hash() {
+    if [ -f "$ENGAGEMENT/findings.json" ]; then
+        md5sum "$ENGAGEMENT/findings.json" 2>/dev/null | cut -d' ' -f1
+    else
+        echo ""
+    fi
+}
+
+check_findings_changes() {
+    local current_hash=$(get_findings_hash)
+    if [ -n "$current_hash" ] && [ "$current_hash" != "$LAST_FINDINGS_HASH" ]; then
+        if [ -n "$LAST_FINDINGS_HASH" ]; then
+            echo -e "${CYAN}[Watchdog]${NC} findings.json changed, checking triggers..."
+            log_event "findings_changed" "\"hash\":\"$current_hash\""
+            check_and_dispatch
+        fi
+        LAST_FINDINGS_HASH="$current_hash"
+    fi
+}
+
+# Start background monitoring with file watcher
 start_watchdog() {
     if [ -f "$PID_FILE" ]; then
         local pid=$(cat "$PID_FILE")
@@ -216,18 +239,28 @@ start_watchdog() {
         fi
     fi
 
-    echo -e "${GREEN}Starting GHOST Watchdog...${NC}"
+    echo -e "${GREEN}Starting GHOST Watchdog with file watcher...${NC}"
+
+    # Initialize findings hash
+    LAST_FINDINGS_HASH=$(get_findings_hash)
 
     (
         while true; do
-            check_and_dispatch 2>/dev/null
-            sleep 10
+            # Check for findings.json changes (fast poll)
+            check_findings_changes 2>/dev/null
+
+            # Full dispatch check every 10 seconds
+            if [ $((SECONDS % 10)) -eq 0 ]; then
+                check_and_dispatch 2>/dev/null
+            fi
+
+            sleep 2  # Check for file changes every 2 seconds
         done
     ) &
 
     echo $! > "$PID_FILE"
     echo "Watchdog started (PID: $!)"
-    log_event "started" "\"pid\":$!"
+    log_event "started" "\"pid\":$!,\"file_watcher\":true"
 }
 
 # Stop monitoring

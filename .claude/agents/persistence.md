@@ -251,11 +251,77 @@ Before each action, ask:
 [Artifacts to remove]
 ```
 
+## Parallel Mode Output
+
+When running as a hunter in parallel mode, write findings to shared state:
+
+### Writing Findings to Shared State
+```bash
+# Set environment
+export GHOST_ENGAGEMENT="/tmp/ghost/active"
+export GHOST_AGENT="persistence"
+HUNTER_DIR="/tmp/ghost/active/hunters/persistence"
+
+# Report privilege escalation success
+~/.claude/scripts/ghost-findings.sh add critical "Root Access Obtained" "Escalated via SUID binary /usr/local/bin/backup"
+~/.claude/scripts/ghost-findings.sh add critical "SYSTEM Access Obtained" "Escalated via SeImpersonate token abuse"
+~/.claude/scripts/ghost-findings.sh add critical "Domain Admin Compromised" "DCSync attack successful"
+
+# Report harvested credentials
+~/.claude/scripts/ghost-findings.sh cred "root" "[shell access]" "privesc" access
+~/.claude/scripts/ghost-findings.sh cred "Administrator" "aad3b435b51404ee..." "sam_dump" hash
+~/.claude/scripts/ghost-findings.sh cred "krbtgt" "NTLM_HASH" "dcsync" hash
+~/.claude/scripts/ghost-findings.sh cred "admin" "Summer2024!" "browser_creds" password
+
+# Report persistence mechanisms deployed (for cleanup tracking)
+~/.claude/scripts/ghost-findings.sh add info "Persistence: SSH Key" "Added SSH key to /root/.ssh/authorized_keys"
+~/.claude/scripts/ghost-findings.sh add info "Persistence: Cron" "Reverse shell cron in /etc/cron.d/backup"
+
+# Store evidence
+mkdir -p "$HUNTER_DIR/evidence"
+```
+
+### Working Directory
+Write detailed outputs to hunter working directory:
+```bash
+# Store privesc enumeration
+linpeas.sh > "$HUNTER_DIR/linpeas-output.txt"
+winPEASany.exe > "$HUNTER_DIR/winpeas-output.txt"
+
+# Store credential dumps
+cat > "$HUNTER_DIR/credentials.txt"
+cat > "$HUNTER_DIR/hashes.txt"
+
+# Store proof of elevated access
+whoami > "$HUNTER_DIR/proof-of-access.txt"
+id >> "$HUNTER_DIR/proof-of-access.txt"
+
+# Document persistence for cleanup
+cat > "$HUNTER_DIR/persistence-deployed.txt" << EOF
+1. SSH key added to /root/.ssh/authorized_keys
+2. Cron job at /etc/cron.d/ghost-persist
+EOF
+```
+
+### Parallel Task Focus
+When dispatched by COMMAND, focus on ONE task:
+- `privesc_enum`: Enumerate escalation vectors
+- `privesc_exec`: Execute privilege escalation
+- `cred_dump`: Credential harvesting (LSASS, SAM, keyrings)
+- `lateral_move`: Move to additional systems
+- `persist_deploy`: Establish persistence mechanisms
+
+### Task Completion
+```bash
+~/.claude/scripts/ghost-dispatch.sh complete "$TASK_ID" success
+```
+
 ## Integration
 
 - **Input from @breaker**: Initial access shells
 - **Input from @spider**: Web shells, application access
 - **Input from @phantom**: Network-based access
+- **Triggered by**: Initial access findings, shell obtained
 - **Output to @command**: Elevated access status
 - **Output to @scribe**: Post-exploitation findings
 

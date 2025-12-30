@@ -200,10 +200,69 @@ Authorization: Bearer <token>
 [How to fix]
 ```
 
+## Parallel Mode Output
+
+When running as a hunter in parallel mode, write findings to shared state:
+
+### Writing Findings to Shared State
+```bash
+# Set environment
+export GHOST_ENGAGEMENT="/tmp/ghost/active"
+export GHOST_AGENT="interceptor"
+HUNTER_DIR="/tmp/ghost/active/hunters/interceptor"
+
+# Report discovered API endpoints
+~/.claude/scripts/ghost-findings.sh asset url "https://target.com/api/v1/users"
+~/.claude/scripts/ghost-findings.sh asset url "https://target.com/api/v1/admin"
+~/.claude/scripts/ghost-findings.sh asset url "https://target.com/graphql"
+~/.claude/scripts/ghost-findings.sh asset swagger "https://target.com/swagger.json"
+
+# Report API vulnerabilities
+~/.claude/scripts/ghost-findings.sh add critical "BOLA - User Data Access" "Can access other users via /api/v1/users/{id}"
+~/.claude/scripts/ghost-findings.sh add critical "JWT None Algorithm Accepted" "Server accepts alg=none in JWT header"
+~/.claude/scripts/ghost-findings.sh add high "Mass Assignment" "Can set role=admin via PUT /api/v1/users/me"
+~/.claude/scripts/ghost-findings.sh add high "BFLA - Admin Endpoints" "Regular user can access /api/v1/admin/users"
+~/.claude/scripts/ghost-findings.sh add medium "Excessive Data Exposure" "API returns password hashes in response"
+
+# Store evidence in hunter dir
+mkdir -p "$HUNTER_DIR/evidence"
+curl -s "$TARGET/api/v1/users/1" -H "Authorization: Bearer $TOKEN" > "$HUNTER_DIR/evidence/bola-poc.json"
+```
+
+### Working Directory
+Write detailed outputs to hunter working directory:
+```bash
+# Store API documentation
+curl -s "$TARGET/swagger.json" > "$HUNTER_DIR/swagger.json"
+curl -s "$TARGET/openapi.yaml" > "$HUNTER_DIR/openapi.yaml"
+
+# Store GraphQL introspection
+echo '{"query":"{__schema{types{name}}}"}' | curl -s -X POST -H "Content-Type: application/json" -d @- "$TARGET/graphql" > "$HUNTER_DIR/graphql-schema.json"
+
+# JWT analysis
+echo "$JWT" > "$HUNTER_DIR/jwt-token.txt"
+python3 jwt_tool.py "$JWT" -M at > "$HUNTER_DIR/jwt-analysis.txt"
+```
+
+### Parallel Task Focus
+When dispatched by COMMAND, focus on ONE task:
+- `api_enum`: Discover endpoints, documentation, schemas
+- `api_test`: Full OWASP API Top 10 testing
+- `bola_test`: BOLA/IDOR testing specifically
+- `jwt_test`: JWT security analysis
+- `graphql_test`: GraphQL introspection and attacks
+- `auth_test`: Authentication bypass testing
+
+### Task Completion
+```bash
+~/.claude/scripts/ghost-dispatch.sh complete "$TASK_ID" success
+```
+
 ## Integration
 
 - **Input from @shadow**: Discovered API endpoints, tech stack
 - **Input from @spider**: Web context, cookies, tokens
+- **Triggered by**: /api/, /graphql, /swagger patterns in findings.json
 - **Output to @breaker**: Exploitable vulnerabilities
 - **Output to @scribe**: API security findings
 

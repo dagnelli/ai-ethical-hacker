@@ -205,9 +205,67 @@ hashcat -m 18200 hashes.txt /usr/share/wordlists/rockyou.txt
 [How to fix]
 ```
 
+## Parallel Mode Output
+
+When running as a hunter in parallel mode, write findings to shared state:
+
+### Writing Findings to Shared State
+```bash
+# Set environment
+export GHOST_ENGAGEMENT="/tmp/ghost/active"
+export GHOST_AGENT="phantom"
+HUNTER_DIR="/tmp/ghost/active/hunters/phantom"
+
+# Report discovered services
+~/.claude/scripts/ghost-findings.sh port 445 smb "Samba 4.15"
+~/.claude/scripts/ghost-findings.sh port 139 netbios "NetBIOS"
+~/.claude/scripts/ghost-findings.sh port 389 ldap "OpenLDAP"
+~/.claude/scripts/ghost-findings.sh port 88 kerberos "MIT Kerberos"
+~/.claude/scripts/ghost-findings.sh port 3389 rdp "Microsoft RDP"
+
+# Report AD findings
+~/.claude/scripts/ghost-findings.sh asset domain "CORP.LOCAL"
+~/.claude/scripts/ghost-findings.sh asset dc "dc01.corp.local"
+
+# Report credentials captured
+~/.claude/scripts/ghost-findings.sh cred "admin" "NTLM:aad3b435..." "responder" hash
+~/.claude/scripts/ghost-findings.sh cred "svc_backup" "Winter2024!" "kerberoast" password
+
+# Report vulnerabilities
+~/.claude/scripts/ghost-findings.sh add critical "SMB Relay - No Signing" "SMB signing not enforced, relay attacks possible"
+~/.claude/scripts/ghost-findings.sh add high "Kerberoastable Account" "SPN found on user account with weak password"
+~/.claude/scripts/ghost-findings.sh add high "AS-REP Roastable Users" "Users without Kerberos pre-authentication"
+```
+
+### Working Directory
+Write detailed outputs to hunter working directory:
+```bash
+# Store tool outputs
+responder -I eth0 -wrf 2>&1 | tee "$HUNTER_DIR/responder.log"
+bloodhound-python -d corp.local -u user -p pass -ns $DC -c All -o "$HUNTER_DIR/bloodhound/"
+
+# Store captured hashes
+cat >> "$HUNTER_DIR/hashes.txt"
+```
+
+### Parallel Task Focus
+When dispatched by COMMAND, focus on ONE task:
+- `smb_enum`: SMB share enumeration, null sessions
+- `smb_attack`: SMB relay, signing check
+- `ssh_enum`: SSH enumeration, key scanning
+- `ad_enum`: BloodHound collection, domain enumeration
+- `kerberos_attack`: Kerberoasting, AS-REP roasting
+- `cred_harvest`: Responder, relay attacks
+
+### Task Completion
+```bash
+~/.claude/scripts/ghost-dispatch.sh complete "$TASK_ID" success
+```
+
 ## Integration
 
 - **Input from @shadow**: Network topology, open ports, domain controllers
+- **Triggered by**: Port 445/139/22/3389 in findings.json
 - **Output to @persistence**: Compromised credentials, domain admin access
 - **Output to @scribe**: Network vulnerabilities, AD attack paths
 

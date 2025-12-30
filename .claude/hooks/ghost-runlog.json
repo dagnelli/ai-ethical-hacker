@@ -1,0 +1,63 @@
+{
+  "$schema": "https://claude.ai/schemas/hooks.json",
+  "description": "GHOST auto-logging hooks for runlog.jsonl",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": {
+          "tool_name": "Bash"
+        },
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -n \"$GHOST_ENGAGEMENT\" ] && [ -f \"$GHOST_ENGAGEMENT/runlog.jsonl\" ]; then echo \"{\\\"timestamp\\\":\\\"$(date -Iseconds)\\\",\\\"event\\\":\\\"tool_bash\\\",\\\"command\\\":\\\"$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.command' 2>/dev/null | head -c 200 | sed 's/\"/\\\\\"/g')\\\"}\" >> \"$GHOST_ENGAGEMENT/runlog.jsonl\"; fi"
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "tool_name": "Read"
+        },
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -n \"$GHOST_ENGAGEMENT\" ] && [ -f \"$GHOST_ENGAGEMENT/runlog.jsonl\" ]; then echo \"{\\\"timestamp\\\":\\\"$(date -Iseconds)\\\",\\\"event\\\":\\\"tool_read\\\",\\\"file\\\":\\\"$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path' 2>/dev/null | sed 's/\"/\\\\\"/g')\\\"}\" >> \"$GHOST_ENGAGEMENT/runlog.jsonl\"; fi"
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "tool_name": "Write"
+        },
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -n \"$GHOST_ENGAGEMENT\" ] && [ -f \"$GHOST_ENGAGEMENT/runlog.jsonl\" ]; then echo \"{\\\"timestamp\\\":\\\"$(date -Iseconds)\\\",\\\"event\\\":\\\"tool_write\\\",\\\"file\\\":\\\"$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path' 2>/dev/null | sed 's/\"/\\\\\"/g')\\\"}\" >> \"$GHOST_ENGAGEMENT/runlog.jsonl\"; fi"
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "tool_name": "Edit"
+        },
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -n \"$GHOST_ENGAGEMENT\" ] && [ -f \"$GHOST_ENGAGEMENT/runlog.jsonl\" ]; then echo \"{\\\"timestamp\\\":\\\"$(date -Iseconds)\\\",\\\"event\\\":\\\"tool_edit\\\",\\\"file\\\":\\\"$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path' 2>/dev/null | sed 's/\"/\\\\\"/g')\\\"}\" >> \"$GHOST_ENGAGEMENT/runlog.jsonl\"; fi"
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "tool_name": "Task"
+        },
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -n \"$GHOST_ENGAGEMENT\" ] && [ -f \"$GHOST_ENGAGEMENT/runlog.jsonl\" ]; then echo \"{\\\"timestamp\\\":\\\"$(date -Iseconds)\\\",\\\"event\\\":\\\"agent_spawn\\\",\\\"agent\\\":\\\"$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.subagent_type' 2>/dev/null)\\\",\\\"description\\\":\\\"$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.description' 2>/dev/null | sed 's/\"/\\\\\"/g')\\\"}\" >> \"$GHOST_ENGAGEMENT/runlog.jsonl\"; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
