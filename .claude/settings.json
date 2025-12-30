@@ -5,7 +5,7 @@
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": {"tools": ["Bash"]},
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
@@ -14,7 +14,7 @@
         ]
       },
       {
-        "matcher": {"tools": ["Read"]},
+        "matcher": "Read",
         "hooks": [
           {
             "type": "command",
@@ -23,7 +23,7 @@
         ]
       },
       {
-        "matcher": {"tools": ["Write"]},
+        "matcher": "Write",
         "hooks": [
           {
             "type": "command",
@@ -32,7 +32,7 @@
         ]
       },
       {
-        "matcher": {"tools": ["Edit"]},
+        "matcher": "Edit",
         "hooks": [
           {
             "type": "command",
@@ -41,7 +41,7 @@
         ]
       },
       {
-        "matcher": {"tools": ["Task"]},
+        "matcher": "Task",
         "hooks": [
           {
             "type": "command",
