@@ -1,0 +1,212 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GHOST Memory Cortex Schema",
+  "description": "Long-term memory storage for engagements, techniques, and patterns",
+  "version": "1.0.0",
+  "type": "object",
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "version": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "last_updated": { "type": "string", "format": "date-time" },
+        "total_engagements": { "type": "integer" },
+        "total_techniques_tracked": { "type": "integer" }
+      }
+    },
+    "engagements": {
+      "type": "array",
+      "description": "Past engagement summaries",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "Unique engagement ID" },
+          "name": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["ctf", "pentest", "bug_bounty", "red_team", "training"]
+          },
+          "target": {
+            "type": "object",
+            "properties": {
+              "primary": { "type": "string", "description": "Primary target (IP/domain)" },
+              "scope": { "type": "array", "items": { "type": "string" } },
+              "platform": { "type": "string", "enum": ["linux", "windows", "mixed", "unknown"] },
+              "fingerprint": {
+                "type": "object",
+                "description": "Target fingerprint for pattern matching",
+                "properties": {
+                  "services": { "type": "array", "items": { "type": "string" } },
+                  "technologies": { "type": "array", "items": { "type": "string" } },
+                  "ports": { "type": "array", "items": { "type": "integer" } },
+                  "cms": { "type": "string" },
+                  "framework": { "type": "string" }
+                }
+              }
+            }
+          },
+          "timeline": {
+            "type": "object",
+            "properties": {
+              "started_at": { "type": "string", "format": "date-time" },
+              "completed_at": { "type": "string", "format": "date-time" },
+              "duration_hours": { "type": "number" }
+            }
+          },
+          "outcome": {
+            "type": "object",
+            "properties": {
+              "success": { "type": "boolean" },
+              "access_level": {
+                "type": "string",
+                "enum": ["none", "user", "root", "admin", "system"]
+              },
+              "flags_captured": {
+                "type": "object",
+                "properties": {
+                  "user": { "type": "boolean" },
+                  "root": { "type": "boolean" }
+                }
+              },
+              "findings_summary": {
+                "type": "object",
+                "properties": {
+                  "critical": { "type": "integer" },
+                  "high": { "type": "integer" },
+                  "medium": { "type": "integer" },
+                  "low": { "type": "integer" },
+                  "info": { "type": "integer" }
+                }
+              }
+            }
+          },
+          "attack_path": {
+            "type": "array",
+            "description": "Ordered list of successful techniques",
+            "items": {
+              "type": "object",
+              "properties": {
+                "phase": { "type": "string" },
+                "technique": { "type": "string" },
+                "mitre_id": { "type": "string" },
+                "agent": { "type": "string" },
+                "success": { "type": "boolean" },
+                "notes": { "type": "string" }
+              }
+            }
+          },
+          "lessons_learned": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "key_findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": { "type": "string" },
+                "severity": { "type": "string" },
+                "cwe": { "type": "string" },
+                "cve": { "type": "string" }
+              }
+            }
+          }
+        },
+        "required": ["id", "name", "type", "target", "timeline", "outcome"]
+      }
+    },
+    "techniques": {
+      "type": "object",
+      "description": "Technique effectiveness tracking",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "mitre_id": { "type": "string" },
+          "name": { "type": "string" },
+          "category": {
+            "type": "string",
+            "enum": ["recon", "enumeration", "exploitation", "privilege_escalation", "lateral_movement", "persistence", "exfiltration"]
+          },
+          "stats": {
+            "type": "object",
+            "properties": {
+              "times_used": { "type": "integer" },
+              "times_successful": { "type": "integer" },
+              "success_rate": { "type": "number" },
+              "last_used": { "type": "string", "format": "date-time" },
+              "last_success": { "type": "string", "format": "date-time" }
+            }
+          },
+          "context_effectiveness": {
+            "type": "object",
+            "description": "Success rate by target context",
+            "properties": {
+              "linux": { "type": "number" },
+              "windows": { "type": "number" },
+              "web_apps": { "type": "number" },
+              "active_directory": { "type": "number" },
+              "cloud": { "type": "number" }
+            }
+          },
+          "prerequisites": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "common_blockers": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "patterns": {
+      "type": "array",
+      "description": "Recognized target patterns and recommended approaches",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "fingerprint_match": {
+            "type": "object",
+            "description": "Conditions to match this pattern",
+            "properties": {
+              "ports": { "type": "array", "items": { "type": "integer" } },
+              "services": { "type": "array", "items": { "type": "string" } },
+              "technologies": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "recommended_techniques": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "technique": { "type": "string" },
+                "priority": { "type": "integer" },
+                "reason": { "type": "string" }
+              }
+            }
+          },
+          "times_matched": { "type": "integer" },
+          "success_rate": { "type": "number" }
+        }
+      }
+    },
+    "insights": {
+      "type": "array",
+      "description": "Learned insights and heuristics",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "category": { "type": "string" },
+          "insight": { "type": "string" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "source_engagements": { "type": "array", "items": { "type": "string" } },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  }
+}

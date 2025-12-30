@@ -341,6 +341,16 @@ export TARGET="10.10.10.100"
 │   └── references/     # Research documents
 │       ├── client-side-vulnerabilities.md
 │       └── business-logic-vulnerabilities.md
+├── memory/                     # Memory Cortex & TTP Engine (v3.0)
+│   ├── cortex.json             # Long-term memory store
+│   ├── cortex-schema.json      # JSON schema for memory
+│   └── ttp-rules.json          # Adaptive TTP rule-based knowledge
+├── templates/                  # Report templates (v3.0)
+│   ├── executive-summary.md    # Executive report template
+│   ├── technical-report.md     # Full technical report template
+│   ├── finding-template.md     # Individual finding template
+│   ├── remediation-guide.md    # Fix recommendations template
+│   └── compliance-mappings.json # CWE/NIST/ISO/PCI/OWASP mappings
 ├── resources/
 │   └── business-logic-vulnerabilities.md
 ├── scripts/
@@ -349,6 +359,11 @@ export TARGET="10.10.10.100"
 │   ├── ghost-dispatch.sh       # Task queue management
 │   ├── ghost-findings.sh       # Findings management
 │   ├── ghost-watchdog.sh       # Auto-dispatch monitor
+│   ├── ghost-memory.sh         # Memory Cortex management (v3.0)
+│   ├── ghost-research.sh       # CVE/Exploit-DB research (v3.0)
+│   ├── ghost-vault.sh          # Encrypted credential storage (v3.0)
+│   ├── ghost-ttp.sh            # Adaptive TTP engine (v3.0)
+│   ├── ghost-report.sh         # Professional report generator (v3.0)
 │   └── ghost-cleanup.sh        # Engagement cleanup
 └── settings.json               # GHOST configuration
 ```
@@ -357,9 +372,48 @@ export TARGET="10.10.10.100"
 
 ## Version
 
-**GHOST v2.3** - December 2025
+**GHOST v3.0** - December 2025
 
-### New in v2.3 (Web Sub-Agents)
+### New in v3.0 (Full Intelligence Suite)
+
+**Memory Cortex** (`ghost-memory.sh`)
+- Long-term memory for engagements, techniques, and patterns
+- Technique effectiveness tracking by context (linux, windows, web, AD, cloud)
+- Pattern matching to recognize target fingerprints
+- Engagement recall for similar past operations
+- Learning loop from engagement outcomes
+
+**Research Engine** (`ghost-research.sh`)
+- Real-time CVE lookup via NVD API
+- Exploit-DB search (searchsploit + web fallback)
+- Built-in technique database (kerberoasting, SQLi, XSS, SSRF, etc.)
+- Service/version to CVE correlation
+- GitHub Security Advisories integration
+- Intelligent caching with TTL and rate limiting
+
+**Secure Vault** (`ghost-vault.sh`)
+- AES256 GPG symmetric encryption for credentials
+- Credential types: password, hash, key, token, api_key, ssh_key, certificate
+- Secrets never logged to access.log (audit trail safe)
+- Secure temp files with shred cleanup
+- Export with hashed secrets for reporting
+
+**Adaptive TTP Engine** (`ghost-ttp.sh`)
+- Context-aware technique recommendations
+- 18+ MITRE ATT&CK techniques with prerequisites and blockers
+- 12 target contexts (linux, windows, AD, cloud, API, etc.)
+- 6 predefined attack chains
+- Blocker bypass suggestions
+- Combines learned effectiveness with rule-based knowledge
+
+**Enhanced Reports** (`ghost-report.sh`)
+- Professional templates (executive, technical, finding, remediation)
+- CVSS 4.0 scoring with full metric breakdown
+- Compliance mapping (NIST 800-53, ISO 27001, PCI DSS, OWASP)
+- Export formats: Markdown, HTML, JSON, PDF
+- 80+ CWE to compliance framework mappings
+
+### Previous (v2.3 - Web Sub-Agents)
 - **OWASP WSTG 4.2 Coverage**: Full 72+ test coverage via specialized agents
 - **@spider Coordinator**: Orchestrates web testing with auto-dispatch
 - **@venom Agent**: Injection specialist (SQLi, XSS, CMDi, SSTI, XXE, SSRF)

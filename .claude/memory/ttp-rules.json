@@ -1,0 +1,573 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "version": "1.0.0",
+  "description": "GHOST Adaptive TTP Engine - Rule-based technique knowledge",
+  "last_updated": "2025-12-30",
+
+  "context_profiles": {
+    "linux": {
+      "description": "Linux-based systems",
+      "indicators": ["ssh", "22", "linux", "ubuntu", "debian", "centos", "rhel", "kali"],
+      "default_phases": ["recon", "enumeration", "exploitation", "privilege_escalation", "persistence"]
+    },
+    "windows": {
+      "description": "Windows-based systems",
+      "indicators": ["rdp", "3389", "smb", "445", "windows", "iis", "asp", "aspx"],
+      "default_phases": ["recon", "enumeration", "exploitation", "privilege_escalation", "lateral_movement", "persistence"]
+    },
+    "macos": {
+      "description": "macOS systems",
+      "indicators": ["macos", "darwin", "apple", "548"],
+      "default_phases": ["recon", "enumeration", "exploitation", "privilege_escalation", "persistence"]
+    },
+    "web_apps": {
+      "description": "Web applications",
+      "indicators": ["http", "https", "80", "443", "8080", "php", "asp", "jsp", "html"],
+      "default_phases": ["recon", "enumeration", "vulnerability", "exploitation"]
+    },
+    "api": {
+      "description": "REST/GraphQL APIs",
+      "indicators": ["api", "rest", "graphql", "json", "swagger", "openapi"],
+      "default_phases": ["recon", "enumeration", "vulnerability", "exploitation"]
+    },
+    "mobile": {
+      "description": "Mobile applications (iOS/Android)",
+      "indicators": ["android", "ios", "apk", "ipa", "mobile"],
+      "default_phases": ["recon", "static_analysis", "dynamic_analysis", "exploitation"]
+    },
+    "active_directory": {
+      "description": "Active Directory environments",
+      "indicators": ["kerberos", "88", "ldap", "389", "636", "domain", "ad", "dc"],
+      "default_phases": ["recon", "enumeration", "credential_access", "lateral_movement", "privilege_escalation", "persistence"]
+    },
+    "cloud_aws": {
+      "description": "AWS cloud environments",
+      "indicators": ["aws", "amazon", "ec2", "s3", "lambda", "iam"],
+      "default_phases": ["recon", "enumeration", "credential_access", "privilege_escalation", "lateral_movement"]
+    },
+    "cloud_azure": {
+      "description": "Azure cloud environments",
+      "indicators": ["azure", "microsoft", "entra", "aad", "blob"],
+      "default_phases": ["recon", "enumeration", "credential_access", "privilege_escalation", "lateral_movement"]
+    },
+    "cloud_gcp": {
+      "description": "Google Cloud Platform",
+      "indicators": ["gcp", "google", "gcloud", "gce", "gcs"],
+      "default_phases": ["recon", "enumeration", "credential_access", "privilege_escalation", "lateral_movement"]
+    },
+    "iot": {
+      "description": "IoT devices",
+      "indicators": ["iot", "mqtt", "1883", "coap", "zigbee", "embedded"],
+      "default_phases": ["recon", "firmware_analysis", "hardware_analysis", "exploitation"]
+    },
+    "embedded": {
+      "description": "Embedded systems",
+      "indicators": ["embedded", "firmware", "rtos", "jtag", "uart"],
+      "default_phases": ["recon", "firmware_analysis", "hardware_analysis", "exploitation"]
+    }
+  },
+
+  "techniques": {
+    "T1595": {
+      "name": "Active Scanning",
+      "category": "recon",
+      "phase": "recon",
+      "contexts": ["linux", "windows", "web_apps", "api", "active_directory", "cloud_aws", "cloud_azure", "cloud_gcp"],
+      "base_priority": 1,
+      "prerequisites": [],
+      "enables": ["T1046", "T1018"],
+      "common_blockers": ["firewall", "ids", "rate_limiting"],
+      "bypass_for_blockers": {
+        "firewall": ["slow_scan", "fragmented_packets", "alternate_ports"],
+        "ids": ["timing_evasion", "decoy_scan", "encrypted_channel"],
+        "rate_limiting": ["distributed_scan", "slow_scan", "ip_rotation"]
+      },
+      "tools": ["nmap", "masscan", "rustscan", "zmap"],
+      "agents": ["shadow"]
+    },
+    "T1046": {
+      "name": "Network Service Discovery",
+      "category": "enumeration",
+      "phase": "enumeration",
+      "contexts": ["linux", "windows", "active_directory"],
+      "base_priority": 2,
+      "prerequisites": ["T1595"],
+      "enables": ["T1190", "T1110", "T1021"],
+      "common_blockers": ["firewall", "host_isolation"],
+      "bypass_for_blockers": {
+        "firewall": ["pivot_through_compromised", "tunnel"],
+        "host_isolation": ["pivot", "proxy_chains"]
+      },
+      "tools": ["nmap", "netcat", "crackmapexec"],
+      "agents": ["shadow", "phantom"]
+    },
+    "T1190": {
+      "name": "Exploit Public-Facing Application",
+      "category": "exploitation",
+      "phase": "exploitation",
+      "contexts": ["linux", "windows", "web_apps", "api"],
+      "base_priority": 1,
+      "prerequisites": ["T1595", "vulnerability_identified"],
+      "enables": ["T1059", "T1078"],
+      "common_blockers": ["waf", "patched", "no_exploit_available", "input_validation"],
+      "bypass_for_blockers": {
+        "waf": ["encoding_bypass", "chunked_transfer", "case_variation", "parameter_pollution"],
+        "patched": ["find_alternate_vuln", "zero_day_research"],
+        "input_validation": ["type_juggling", "unicode_bypass", "null_byte"]
+      },
+      "tools": ["sqlmap", "burpsuite", "nuclei", "metasploit"],
+      "agents": ["spider", "venom", "breaker"]
+    },
+    "T1078": {
+      "name": "Valid Accounts",
+      "category": "credential_access",
+      "phase": "exploitation",
+      "contexts": ["linux", "windows", "active_directory", "cloud_aws", "cloud_azure", "cloud_gcp"],
+      "base_priority": 2,
+      "prerequisites": ["credentials_obtained"],
+      "enables": ["T1021", "T1548"],
+      "common_blockers": ["mfa", "account_lockout", "password_changed", "conditional_access"],
+      "bypass_for_blockers": {
+        "mfa": ["mfa_fatigue", "sim_swap", "token_theft", "session_hijack"],
+        "account_lockout": ["password_spray", "timing_attack"],
+        "conditional_access": ["trusted_device", "location_spoof"]
+      },
+      "tools": ["crackmapexec", "mimikatz", "impacket"],
+      "agents": ["phantom", "persistence"]
+    },
+    "T1110": {
+      "name": "Brute Force",
+      "category": "credential_access",
+      "phase": "exploitation",
+      "contexts": ["linux", "windows", "web_apps", "active_directory"],
+      "base_priority": 3,
+      "prerequisites": ["T1087", "valid_usernames"],
+      "enables": ["T1078"],
+      "common_blockers": ["account_lockout", "rate_limiting", "captcha", "mfa"],
+      "bypass_for_blockers": {
+        "account_lockout": ["password_spray", "distributed_attack"],
+        "rate_limiting": ["ip_rotation", "slow_attack"],
+        "captcha": ["captcha_solver", "api_bypass"],
+        "mfa": ["mfa_fatigue", "social_engineering"]
+      },
+      "tools": ["hydra", "medusa", "crackmapexec", "burpsuite"],
+      "agents": ["phantom", "spider"]
+    },
+    "T1059": {
+      "name": "Command and Scripting Interpreter",
+      "category": "execution",
+      "phase": "exploitation",
+      "contexts": ["linux", "windows", "macos"],
+      "base_priority": 1,
+      "prerequisites": ["rce_vulnerability", "T1190"],
+      "enables": ["T1548", "T1021", "T1003"],
+      "common_blockers": ["sandbox", "restricted_shell", "no_outbound", "apparmor", "selinux", "edr"],
+      "bypass_for_blockers": {
+        "sandbox": ["sandbox_escape", "container_breakout"],
+        "restricted_shell": ["shell_escape", "gtfobins", "lolbas"],
+        "no_outbound": ["dns_tunnel", "icmp_tunnel", "reverse_shell_over_allowed"],
+        "edr": ["living_off_the_land", "memory_only", "process_injection"]
+      },
+      "tools": ["python", "bash", "powershell", "netcat"],
+      "agents": ["breaker", "persistence"]
+    },
+    "T1548": {
+      "name": "Abuse Elevation Control Mechanism",
+      "category": "privilege_escalation",
+      "phase": "privilege_escalation",
+      "contexts": ["linux", "windows", "macos"],
+      "base_priority": 1,
+      "prerequisites": ["low_priv_access", "T1059"],
+      "enables": ["T1003", "T1552"],
+      "common_blockers": ["patched", "restricted_sudo", "uac_enforced", "credential_guard"],
+      "bypass_for_blockers": {
+        "patched": ["kernel_exploit", "service_exploit", "config_weakness"],
+        "restricted_sudo": ["sudo_misconfiguration", "path_hijack"],
+        "uac_enforced": ["uac_bypass", "fodhelper", "eventvwr"],
+        "credential_guard": ["dcsync", "ntds_dump"]
+      },
+      "tools": ["linpeas", "winpeas", "pspy", "wesng"],
+      "agents": ["persistence"]
+    },
+    "T1558": {
+      "name": "Steal or Forge Kerberos Tickets",
+      "category": "credential_access",
+      "phase": "lateral_movement",
+      "contexts": ["windows", "active_directory"],
+      "base_priority": 1,
+      "prerequisites": ["domain_access", "valid_domain_user"],
+      "enables": ["T1021", "T1550"],
+      "common_blockers": ["ata", "credential_guard", "kerberos_armoring", "aes_only"],
+      "bypass_for_blockers": {
+        "ata": ["slower_attack", "obfuscation"],
+        "credential_guard": ["dcsync_from_dc", "shadow_credentials"],
+        "kerberos_armoring": ["downgrade_attack", "unconstrained_delegation"],
+        "aes_only": ["find_rc4_spn", "machine_account"]
+      },
+      "tools": ["rubeus", "impacket", "mimikatz", "crackmapexec"],
+      "agents": ["phantom"]
+    },
+    "T1021": {
+      "name": "Remote Services",
+      "category": "lateral_movement",
+      "phase": "lateral_movement",
+      "contexts": ["linux", "windows", "active_directory"],
+      "base_priority": 2,
+      "prerequisites": ["valid_credentials", "network_access", "T1078"],
+      "enables": ["T1059"],
+      "common_blockers": ["firewall", "jump_host_required", "mfa", "network_segmentation"],
+      "bypass_for_blockers": {
+        "firewall": ["pivot", "tunnel", "port_forward"],
+        "jump_host_required": ["compromise_jump_host"],
+        "mfa": ["session_hijack", "pass_the_ticket"],
+        "network_segmentation": ["pivot_chain", "vlan_hopping"]
+      },
+      "tools": ["ssh", "rdp", "psexec", "wmiexec", "smbexec"],
+      "agents": ["phantom", "persistence"]
+    },
+    "T1087": {
+      "name": "Account Discovery",
+      "category": "enumeration",
+      "phase": "enumeration",
+      "contexts": ["linux", "windows", "active_directory", "cloud_aws", "cloud_azure"],
+      "base_priority": 2,
+      "prerequisites": ["T1595"],
+      "enables": ["T1110", "T1078"],
+      "common_blockers": ["ldap_signing", "minimal_exposure"],
+      "bypass_for_blockers": {
+        "ldap_signing": ["authenticated_ldap", "rid_cycling"],
+        "minimal_exposure": ["social_engineering", "osint"]
+      },
+      "tools": ["ldapsearch", "bloodhound", "adsisearcher", "enum4linux"],
+      "agents": ["shadow", "phantom"]
+    },
+    "T1003": {
+      "name": "OS Credential Dumping",
+      "category": "credential_access",
+      "phase": "privilege_escalation",
+      "contexts": ["linux", "windows", "active_directory"],
+      "base_priority": 1,
+      "prerequisites": ["admin_access", "T1548"],
+      "enables": ["T1021", "T1550"],
+      "common_blockers": ["credential_guard", "lsass_protection", "edr"],
+      "bypass_for_blockers": {
+        "credential_guard": ["dcsync", "ntds", "shadow_credentials"],
+        "lsass_protection": ["nanodump", "minidump_callback", "ssp_injection"],
+        "edr": ["direct_syscalls", "unhooking", "process_hollowing"]
+      },
+      "tools": ["mimikatz", "secretsdump", "lazagne", "nanodump"],
+      "agents": ["phantom", "persistence"]
+    },
+    "T1550": {
+      "name": "Use Alternate Authentication Material",
+      "category": "lateral_movement",
+      "phase": "lateral_movement",
+      "contexts": ["windows", "active_directory"],
+      "base_priority": 1,
+      "prerequisites": ["T1003", "hash_or_ticket_obtained"],
+      "enables": ["T1021"],
+      "common_blockers": ["credential_guard", "admin_tiering", "mfa"],
+      "bypass_for_blockers": {
+        "credential_guard": ["silver_ticket", "golden_ticket"],
+        "admin_tiering": ["find_path_to_tier0"],
+        "mfa": ["pass_the_ticket", "certificate_auth"]
+      },
+      "tools": ["mimikatz", "impacket", "rubeus"],
+      "agents": ["phantom"]
+    },
+    "T1552": {
+      "name": "Unsecured Credentials",
+      "category": "credential_access",
+      "phase": "enumeration",
+      "contexts": ["linux", "windows", "web_apps", "cloud_aws", "cloud_azure", "cloud_gcp"],
+      "base_priority": 2,
+      "prerequisites": ["file_access"],
+      "enables": ["T1078"],
+      "common_blockers": ["secrets_management", "encrypted_storage"],
+      "bypass_for_blockers": {
+        "secrets_management": ["memory_dump", "config_files", "env_vars"],
+        "encrypted_storage": ["key_extraction", "memory_analysis"]
+      },
+      "tools": ["trufflehog", "gitleaks", "snaffler", "lazagne"],
+      "agents": ["shadow", "persistence"]
+    },
+    "T1068": {
+      "name": "Exploitation for Privilege Escalation",
+      "category": "privilege_escalation",
+      "phase": "privilege_escalation",
+      "contexts": ["linux", "windows", "macos"],
+      "base_priority": 2,
+      "prerequisites": ["low_priv_access", "vulnerable_software"],
+      "enables": ["T1003"],
+      "common_blockers": ["patched", "edr", "exploit_guard"],
+      "bypass_for_blockers": {
+        "patched": ["find_unpatched_software", "kernel_exploit"],
+        "edr": ["memory_only_exploit", "custom_payload"],
+        "exploit_guard": ["rop_gadgets", "custom_shellcode"]
+      },
+      "tools": ["metasploit", "searchsploit", "linux-exploit-suggester"],
+      "agents": ["breaker", "persistence"]
+    },
+    "T1566": {
+      "name": "Phishing",
+      "category": "initial_access",
+      "phase": "exploitation",
+      "contexts": ["windows", "macos", "active_directory"],
+      "base_priority": 3,
+      "prerequisites": ["target_email_identified"],
+      "enables": ["T1059", "T1078"],
+      "common_blockers": ["email_gateway", "user_awareness", "sandbox_analysis"],
+      "bypass_for_blockers": {
+        "email_gateway": ["typosquatting", "lookalike_domain", "encrypted_payload"],
+        "user_awareness": ["pretexting", "urgency", "authority"],
+        "sandbox_analysis": ["delayed_execution", "user_interaction_required"]
+      },
+      "tools": ["gophish", "evilginx", "modlishka"],
+      "agents": ["mindbender"]
+    },
+    "T1133": {
+      "name": "External Remote Services",
+      "category": "initial_access",
+      "phase": "exploitation",
+      "contexts": ["linux", "windows", "active_directory", "cloud_aws", "cloud_azure"],
+      "base_priority": 2,
+      "prerequisites": ["credentials_obtained", "T1110"],
+      "enables": ["T1059"],
+      "common_blockers": ["mfa", "vpn_required", "ip_whitelist"],
+      "bypass_for_blockers": {
+        "mfa": ["mfa_fatigue", "token_theft"],
+        "vpn_required": ["credential_stuffing_vpn"],
+        "ip_whitelist": ["compromise_whitelisted_host"]
+      },
+      "tools": ["ssh", "rdp", "vpn_client"],
+      "agents": ["phantom"]
+    },
+    "T1055": {
+      "name": "Process Injection",
+      "category": "defense_evasion",
+      "phase": "exploitation",
+      "contexts": ["linux", "windows"],
+      "base_priority": 3,
+      "prerequisites": ["code_execution", "T1059"],
+      "enables": ["T1003"],
+      "common_blockers": ["edr", "exploit_guard", "ppl"],
+      "bypass_for_blockers": {
+        "edr": ["direct_syscalls", "unhooking", "custom_loader"],
+        "exploit_guard": ["apc_injection", "callback_injection"],
+        "ppl": ["ppl_bypass", "driver_exploit"]
+      },
+      "tools": ["cobalt_strike", "sliver", "havoc"],
+      "agents": ["breaker"]
+    },
+    "T1105": {
+      "name": "Ingress Tool Transfer",
+      "category": "command_and_control",
+      "phase": "exploitation",
+      "contexts": ["linux", "windows", "macos"],
+      "base_priority": 2,
+      "prerequisites": ["code_execution", "T1059"],
+      "enables": ["T1059"],
+      "common_blockers": ["egress_filtering", "proxy_required", "dlp"],
+      "bypass_for_blockers": {
+        "egress_filtering": ["dns_exfil", "icmp", "allowed_port"],
+        "proxy_required": ["proxy_aware_tools", "tunnel"],
+        "dlp": ["encryption", "steganography", "chunking"]
+      },
+      "tools": ["wget", "curl", "certutil", "bitsadmin"],
+      "agents": ["breaker", "persistence"]
+    }
+  },
+
+  "attack_chains": {
+    "web_to_root_linux": {
+      "name": "Web App to Root (Linux)",
+      "description": "Standard web application exploitation to root access on Linux",
+      "chain": ["T1595", "T1190", "T1059", "T1548"],
+      "contexts": ["linux", "web_apps"],
+      "success_indicators": ["shell_obtained", "root_access"]
+    },
+    "web_to_admin_windows": {
+      "name": "Web App to Admin (Windows)",
+      "description": "Web application exploitation to admin access on Windows",
+      "chain": ["T1595", "T1190", "T1059", "T1068"],
+      "contexts": ["windows", "web_apps"],
+      "success_indicators": ["shell_obtained", "admin_access"]
+    },
+    "ad_standard": {
+      "name": "AD Standard Attack Path",
+      "description": "Standard Active Directory attack path",
+      "chain": ["T1595", "T1087", "T1110", "T1558", "T1550", "T1003"],
+      "contexts": ["active_directory", "windows"],
+      "success_indicators": ["domain_user", "domain_admin"]
+    },
+    "ad_kerberoast": {
+      "name": "Kerberoasting Path",
+      "description": "Kerberoasting to domain admin",
+      "chain": ["T1087", "T1558", "T1110", "T1078", "T1003"],
+      "contexts": ["active_directory"],
+      "success_indicators": ["spn_cracked", "domain_admin"]
+    },
+    "cloud_iam_escalation": {
+      "name": "Cloud IAM Escalation",
+      "description": "Cloud privilege escalation via IAM",
+      "chain": ["T1595", "T1552", "T1078", "T1548"],
+      "contexts": ["cloud_aws", "cloud_azure", "cloud_gcp"],
+      "success_indicators": ["cloud_creds", "admin_role"]
+    },
+    "api_exploitation": {
+      "name": "API Exploitation Chain",
+      "description": "REST/GraphQL API exploitation",
+      "chain": ["T1595", "T1190", "T1552", "T1078"],
+      "contexts": ["api"],
+      "success_indicators": ["auth_bypass", "data_access"]
+    }
+  },
+
+  "phase_techniques": {
+    "recon": {
+      "techniques": ["T1595", "T1592", "T1589", "T1590"],
+      "priority_order": ["T1595", "T1590", "T1592", "T1589"],
+      "completion_indicators": ["ports_discovered", "services_identified", "technologies_fingerprinted"]
+    },
+    "enumeration": {
+      "techniques": ["T1046", "T1087", "T1082", "T1083"],
+      "priority_order": ["T1046", "T1087", "T1082", "T1083"],
+      "completion_indicators": ["users_enumerated", "shares_enumerated", "vulnerabilities_identified"]
+    },
+    "exploitation": {
+      "techniques": ["T1190", "T1110", "T1566", "T1133", "T1059"],
+      "priority_order": ["T1190", "T1110", "T1133", "T1566", "T1059"],
+      "completion_indicators": ["initial_access", "shell_obtained"]
+    },
+    "privilege_escalation": {
+      "techniques": ["T1548", "T1068", "T1134", "T1078"],
+      "priority_order": ["T1548", "T1068", "T1078", "T1134"],
+      "completion_indicators": ["elevated_access", "admin_access", "root_access"]
+    },
+    "credential_access": {
+      "techniques": ["T1003", "T1552", "T1558", "T1555"],
+      "priority_order": ["T1003", "T1558", "T1552", "T1555"],
+      "completion_indicators": ["credentials_obtained", "hashes_obtained", "tickets_obtained"]
+    },
+    "lateral_movement": {
+      "techniques": ["T1021", "T1550", "T1570"],
+      "priority_order": ["T1550", "T1021", "T1570"],
+      "completion_indicators": ["new_host_compromised", "expanded_access"]
+    },
+    "persistence": {
+      "techniques": ["T1098", "T1136", "T1053", "T1543"],
+      "priority_order": ["T1098", "T1136", "T1053", "T1543"],
+      "completion_indicators": ["persistence_established"]
+    }
+  },
+
+  "blocker_to_bypass": {
+    "waf": {
+      "description": "Web Application Firewall",
+      "bypass_techniques": [
+        {"technique": "encoding_bypass", "description": "URL/HTML/Unicode encoding", "tools": ["burp_encoder"]},
+        {"technique": "chunked_transfer", "description": "HTTP chunked encoding", "tools": ["burpsuite"]},
+        {"technique": "case_variation", "description": "Mixed case keywords", "tools": ["sqlmap"]},
+        {"technique": "parameter_pollution", "description": "HPP attacks", "tools": ["burpsuite"]},
+        {"technique": "multipart_bypass", "description": "Multipart form data", "tools": ["burpsuite"]},
+        {"technique": "json_bypass", "description": "Content-Type to JSON", "tools": ["burpsuite"]}
+      ],
+      "alternative_techniques": ["T1566", "T1133", "T1199"]
+    },
+    "edr": {
+      "description": "Endpoint Detection and Response",
+      "bypass_techniques": [
+        {"technique": "living_off_land", "description": "Use built-in tools", "tools": ["lolbas", "gtfobins"]},
+        {"technique": "direct_syscalls", "description": "Direct NT syscalls", "tools": ["syswhispers"]},
+        {"technique": "unhooking", "description": "Remove EDR hooks", "tools": ["perun"]},
+        {"technique": "ppid_spoofing", "description": "Parent PID spoofing", "tools": ["custom"]},
+        {"technique": "memory_only", "description": "Fileless execution", "tools": ["powershell"]}
+      ],
+      "alternative_techniques": ["T1055", "T1218"]
+    },
+    "mfa": {
+      "description": "Multi-Factor Authentication",
+      "bypass_techniques": [
+        {"technique": "mfa_fatigue", "description": "Repeated push notifications", "tools": ["custom"]},
+        {"technique": "session_hijack", "description": "Steal authenticated session", "tools": ["evilginx"]},
+        {"technique": "token_theft", "description": "Steal MFA token/cookie", "tools": ["modlishka"]},
+        {"technique": "sim_swap", "description": "SIM swapping (social eng)", "tools": ["social"]}
+      ],
+      "alternative_techniques": ["T1550", "T1539"]
+    },
+    "credential_guard": {
+      "description": "Windows Credential Guard",
+      "bypass_techniques": [
+        {"technique": "dcsync", "description": "DCSync from DC", "tools": ["mimikatz", "secretsdump"]},
+        {"technique": "shadow_credentials", "description": "msDS-KeyCredentialLink abuse", "tools": ["whisker"]},
+        {"technique": "ntds_extraction", "description": "Extract NTDS.dit", "tools": ["ntdsutil", "vssadmin"]}
+      ],
+      "alternative_techniques": ["T1558", "T1552"]
+    },
+    "firewall": {
+      "description": "Network Firewall",
+      "bypass_techniques": [
+        {"technique": "tunnel", "description": "HTTP/DNS/ICMP tunneling", "tools": ["chisel", "dnscat2"]},
+        {"technique": "pivot", "description": "Pivot through compromised host", "tools": ["sshuttle", "socat"]},
+        {"technique": "port_forward", "description": "Port forwarding", "tools": ["ssh", "netsh"]}
+      ],
+      "alternative_techniques": ["T1090", "T1572"]
+    },
+    "rate_limiting": {
+      "description": "Rate Limiting Controls",
+      "bypass_techniques": [
+        {"technique": "distributed", "description": "Distribute across IPs", "tools": ["custom"]},
+        {"technique": "slow_attack", "description": "Slow down requests", "tools": ["hydra"]},
+        {"technique": "ip_rotation", "description": "Rotate source IPs", "tools": ["proxychains"]}
+      ],
+      "alternative_techniques": ["T1566", "T1199"]
+    },
+    "patched": {
+      "description": "Vulnerability Patched",
+      "bypass_techniques": [
+        {"technique": "find_alternate", "description": "Find different vulnerability", "tools": ["nuclei"]},
+        {"technique": "chain_vulns", "description": "Chain multiple low-sev vulns", "tools": ["burpsuite"]},
+        {"technique": "logic_flaw", "description": "Business logic vulnerabilities", "tools": ["manual"]}
+      ],
+      "alternative_techniques": ["T1566", "T1133", "T1199"]
+    }
+  },
+
+  "context_technique_priority": {
+    "linux": {
+      "high_priority": ["T1190", "T1059", "T1548", "T1552"],
+      "medium_priority": ["T1110", "T1021", "T1068"],
+      "low_priority": ["T1566"]
+    },
+    "windows": {
+      "high_priority": ["T1190", "T1059", "T1003", "T1078"],
+      "medium_priority": ["T1110", "T1548", "T1021"],
+      "low_priority": ["T1068"]
+    },
+    "active_directory": {
+      "high_priority": ["T1558", "T1550", "T1003", "T1087"],
+      "medium_priority": ["T1110", "T1021", "T1078"],
+      "low_priority": ["T1190"]
+    },
+    "web_apps": {
+      "high_priority": ["T1190", "T1059", "T1552"],
+      "medium_priority": ["T1110", "T1078"],
+      "low_priority": ["T1068"]
+    },
+    "api": {
+      "high_priority": ["T1190", "T1552", "T1078"],
+      "medium_priority": ["T1110"],
+      "low_priority": []
+    },
+    "cloud_aws": {
+      "high_priority": ["T1552", "T1078", "T1548"],
+      "medium_priority": ["T1087", "T1190"],
+      "low_priority": ["T1110"]
+    },
+    "cloud_azure": {
+      "high_priority": ["T1552", "T1078", "T1548"],
+      "medium_priority": ["T1087", "T1190"],
+      "low_priority": ["T1110"]
+    }
+  }
+}

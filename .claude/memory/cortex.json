@@ -1,0 +1,405 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "created_at": "2024-12-30T00:00:00Z",
+    "last_updated": "2025-12-30T13:22:22+00:00",
+    "total_engagements": 1,
+    "total_techniques_tracked": 8
+  },
+  "engagements": [
+    {
+      "id": "eng_1767100925",
+      "name": "HTB-Test-Box",
+      "type": "ctf",
+      "target": {
+        "primary": "10.10.10.100",
+        "scope": [
+          "10.10.10.100"
+        ],
+        "platform": "unknown",
+        "fingerprint": {
+          "services": [],
+          "technologies": [],
+          "ports": [],
+          "cms": null,
+          "framework": null
+        }
+      },
+      "timeline": {
+        "started_at": "2025-12-30T13:22:05+00:00",
+        "completed_at": null,
+        "duration_hours": 0
+      },
+      "outcome": {
+        "success": false,
+        "access_level": "none",
+        "flags_captured": {
+          "user": false,
+          "root": false
+        },
+        "findings_summary": {
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0,
+          "info": 0
+        }
+      },
+      "attack_path": [],
+      "lessons_learned": [],
+      "key_findings": []
+    }
+  ],
+  "techniques": {
+    "T1595": {
+      "mitre_id": "T1595",
+      "name": "Active Scanning",
+      "category": "recon",
+      "stats": {
+        "times_used": 0,
+        "times_successful": 0,
+        "success_rate": 0.0,
+        "last_used": null,
+        "last_success": null
+      },
+      "context_effectiveness": {
+        "linux": 0.0,
+        "windows": 0.0,
+        "web_apps": 0.0,
+        "active_directory": 0.0,
+        "cloud": 0.0
+      },
+      "prerequisites": [],
+      "common_blockers": [
+        "firewall",
+        "ids",
+        "rate_limiting"
+      ]
+    },
+    "T1190": {
+      "mitre_id": "T1190",
+      "name": "Exploit Public-Facing Application",
+      "category": "exploitation",
+      "stats": {
+        "times_used": 2,
+        "times_successful": 2,
+        "success_rate": 1,
+        "last_used": "2025-12-30T13:22:22+00:00",
+        "last_success": "2025-12-30T13:22:22+00:00"
+      },
+      "context_effectiveness": {
+        "linux": 1,
+        "windows": 0.0,
+        "web_apps": 0.5,
+        "active_directory": 0.0,
+        "cloud": 0.0
+      },
+      "prerequisites": [
+        "vulnerability_identified"
+      ],
+      "common_blockers": [
+        "waf",
+        "patched",
+        "no_exploit_available"
+      ]
+    },
+    "T1078": {
+      "mitre_id": "T1078",
+      "name": "Valid Accounts",
+      "category": "privilege_escalation",
+      "stats": {
+        "times_used": 0,
+        "times_successful": 0,
+        "success_rate": 0.0,
+        "last_used": null,
+        "last_success": null
+      },
+      "context_effectiveness": {
+        "linux": 0.0,
+        "windows": 0.0,
+        "web_apps": 0.0,
+        "active_directory": 0.0,
+        "cloud": 0.0
+      },
+      "prerequisites": [
+        "credentials_obtained"
+      ],
+      "common_blockers": [
+        "mfa",
+        "account_lockout",
+        "password_changed"
+      ]
+    },
+    "T1110": {
+      "mitre_id": "T1110",
+      "name": "Brute Force",
+      "category": "exploitation",
+      "stats": {
+        "times_used": 0,
+        "times_successful": 0,
+        "success_rate": 0.0,
+        "last_used": null,
+        "last_success": null
+      },
+      "context_effectiveness": {
+        "linux": 0.0,
+        "windows": 0.0,
+        "web_apps": 0.0,
+        "active_directory": 0.0,
+        "cloud": 0.0
+      },
+      "prerequisites": [
+        "valid_usernames"
+      ],
+      "common_blockers": [
+        "account_lockout",
+        "rate_limiting",
+        "captcha"
+      ]
+    },
+    "T1059": {
+      "mitre_id": "T1059",
+      "name": "Command and Scripting Interpreter",
+      "category": "exploitation",
+      "stats": {
+        "times_used": 0,
+        "times_successful": 0,
+        "success_rate": 0.0,
+        "last_used": null,
+        "last_success": null
+      },
+      "context_effectiveness": {
+        "linux": 0.0,
+        "windows": 0.0,
+        "web_apps": 0.0,
+        "active_directory": 0.0,
+        "cloud": 0.0
+      },
+      "prerequisites": [
+        "rce_vulnerability"
+      ],
+      "common_blockers": [
+        "sandbox",
+        "restricted_shell",
+        "no_outbound"
+      ]
+    },
+    "T1548": {
+      "mitre_id": "T1548",
+      "name": "Abuse Elevation Control Mechanism",
+      "category": "privilege_escalation",
+      "stats": {
+        "times_used": 0,
+        "times_successful": 0,
+        "success_rate": 0.0,
+        "last_used": null,
+        "last_success": null
+      },
+      "context_effectiveness": {
+        "linux": 0.0,
+        "windows": 0.0,
+        "web_apps": 0.0,
+        "active_directory": 0.0,
+        "cloud": 0.0
+      },
+      "prerequisites": [
+        "low_priv_access"
+      ],
+      "common_blockers": [
+        "patched",
+        "restricted_sudo",
+        "uac_enforced"
+      ]
+    },
+    "T1558": {
+      "mitre_id": "T1558",
+      "name": "Steal or Forge Kerberos Tickets",
+      "category": "lateral_movement",
+      "stats": {
+        "times_used": 0,
+        "times_successful": 0,
+        "success_rate": 0.0,
+        "last_used": null,
+        "last_success": null
+      },
+      "context_effectiveness": {
+        "linux": 0.0,
+        "windows": 0.0,
+        "web_apps": 0.0,
+        "active_directory": 0.0,
+        "cloud": 0.0
+      },
+      "prerequisites": [
+        "domain_access",
+        "valid_domain_user"
+      ],
+      "common_blockers": [
+        "ata",
+        "credential_guard",
+        "kerberos_armoring"
+      ]
+    },
+    "T1021": {
+      "mitre_id": "T1021",
+      "name": "Remote Services",
+      "category": "lateral_movement",
+      "stats": {
+        "times_used": 0,
+        "times_successful": 0,
+        "success_rate": 0.0,
+        "last_used": null,
+        "last_success": null
+      },
+      "context_effectiveness": {
+        "linux": 0.0,
+        "windows": 0.0,
+        "web_apps": 0.0,
+        "active_directory": 0.0,
+        "cloud": 0.0
+      },
+      "prerequisites": [
+        "valid_credentials",
+        "network_access"
+      ],
+      "common_blockers": [
+        "firewall",
+        "jump_host_required",
+        "mfa"
+      ]
+    }
+  },
+  "patterns": [
+    {
+      "id": "pattern_web_lamp",
+      "name": "LAMP Stack Web Application",
+      "fingerprint_match": {
+        "ports": [
+          80,
+          443,
+          3306
+        ],
+        "services": [
+          "http",
+          "https",
+          "mysql"
+        ],
+        "technologies": [
+          "apache",
+          "php",
+          "mysql",
+          "linux"
+        ]
+      },
+      "recommended_techniques": [
+        {
+          "technique": "SQL Injection",
+          "priority": 1,
+          "reason": "PHP+MySQL common SQLi target"
+        },
+        {
+          "technique": "File Upload",
+          "priority": 2,
+          "reason": "PHP webshell potential"
+        },
+        {
+          "technique": "LFI/RFI",
+          "priority": 3,
+          "reason": "PHP include vulnerabilities"
+        }
+      ],
+      "times_matched": 0,
+      "success_rate": 0.0
+    },
+    {
+      "id": "pattern_windows_ad",
+      "name": "Windows Active Directory",
+      "fingerprint_match": {
+        "ports": [
+          88,
+          389,
+          445,
+          3389
+        ],
+        "services": [
+          "kerberos",
+          "ldap",
+          "smb",
+          "rdp"
+        ],
+        "technologies": [
+          "windows",
+          "active_directory"
+        ]
+      },
+      "recommended_techniques": [
+        {
+          "technique": "AS-REP Roasting",
+          "priority": 1,
+          "reason": "No auth required"
+        },
+        {
+          "technique": "Kerberoasting",
+          "priority": 2,
+          "reason": "Common weak service accounts"
+        },
+        {
+          "technique": "SMB Relay",
+          "priority": 3,
+          "reason": "Signing often not required"
+        },
+        {
+          "technique": "LLMNR/NBT-NS Poisoning",
+          "priority": 4,
+          "reason": "Capture hashes on LAN"
+        }
+      ],
+      "times_matched": 0,
+      "success_rate": 0.0
+    },
+    {
+      "id": "pattern_api_rest",
+      "name": "REST API Service",
+      "fingerprint_match": {
+        "ports": [
+          80,
+          443,
+          8080
+        ],
+        "services": [
+          "http",
+          "https"
+        ],
+        "technologies": [
+          "api",
+          "rest",
+          "json"
+        ]
+      },
+      "recommended_techniques": [
+        {
+          "technique": "BOLA/IDOR",
+          "priority": 1,
+          "reason": "Most common API vulnerability"
+        },
+        {
+          "technique": "JWT Algorithm Confusion",
+          "priority": 2,
+          "reason": "Common auth flaw"
+        },
+        {
+          "technique": "Mass Assignment",
+          "priority": 3,
+          "reason": "API parameter injection"
+        },
+        {
+          "technique": "Rate Limit Bypass",
+          "priority": 4,
+          "reason": "Often misconfigured"
+        }
+      ],
+      "times_matched": 0,
+      "success_rate": 0.0
+    }
+  ],
+  "insights": []
+}
